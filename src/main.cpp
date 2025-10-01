@@ -5,6 +5,8 @@
 #include "Camera.h"
 #include "Shape.h"
 #include "Triangle.h"
+#include "Square.h"
+#include "Cube.h"
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
@@ -225,9 +227,18 @@ int main() {
   // --- SETUP WORLD OBJECTS ---
   std::vector<Shape*> worldObjects;
   
+
+  Cube* cube = new Cube();
+  cube->position = glm::vec3(0.0f, 0.0f, -10.0f);
+  worldObjects.push_back(cube);
+
+  Square* square = new Square();
+  square->position = glm::vec3(0.0f, 0.0f, -5.0f);
+  worldObjects.push_back(square);
+
   for (int i=0; i<32; i++) {
     Triangle* triangle = new Triangle();
-    triangle->position = glm::vec3(0.0f, 0, (float)(-i)*0.1);
+    triangle->position = glm::vec3(0.0f, 0.0f, (float)(-i)*0.1);
     worldObjects.push_back(triangle);
   }
   
@@ -286,7 +297,7 @@ int main() {
     glm::vec3 right = glm::normalize(glm::cross(forward, worldUp));
     glm::vec3 up = glm::normalize(glm::cross(right, forward));
 
-    // View matrix - use lookAt for proper camera positioning
+    // View matrix
     glm::mat4 view = glm::lookAt(cam.getCamPos(), cam.getCamPos() + forward, up);
 
     // Projection matrix
@@ -330,17 +341,15 @@ int main() {
       glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(quadModel));
       glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
       glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
-      glUniform4f(colorLoc, 0.0f, 1.0f, 1.0f, 0.3f);
-      glDrawArrays(GL_TRIANGLES, 0, 6);
     } else {
       glm::mat4 orthoProjection = glm::ortho(-1.0f, 1.0f, -1.0f, 1.0f, 0.1f, 10.0f);
       glm::mat4 hudView = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -1.0f));
       
       glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(orthoProjection));
       glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(hudView));
-      glUniform4f(colorLoc, 0.0f, 1.0f, 1.0f, 0.3f);
-      glDrawArrays(GL_TRIANGLES, 0, 6);
     }
+    glUniform4f(colorLoc, 0.0f, 1.0f, 1.0f, 0.3f);
+    glDrawArrays(GL_TRIANGLES, 0, 6);
 
     // Restore perspective projection and view matrix for world objects
     glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));

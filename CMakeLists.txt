@@ -70,6 +70,8 @@ set(SOURCES
     src/Camera.cpp
     src/Shape.cpp
     src/objects/Triangle.cpp
+    src/objects/Square.cpp
+    src/objects/Cube.cpp
 )
 
 # Find OpenGL
