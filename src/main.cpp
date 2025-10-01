@@ -1,3 +1,7 @@
+#include "Shader.h"
+#include "ShaderProgram.h"
+#include "VAO.h"
+#include "VBO.h"
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
@@ -46,97 +50,6 @@ void processInput(GLFWwindow *window) {
   if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
     glfwSetWindowShouldClose(window, true);
 }
-
-class Shader {
-public:
-  Shader(std::string *shaderSource, GLenum shaderType) {
-    m_id = glCreateShader(shaderType);
-    const char *p = shaderSource->c_str();
-    glShaderSource(m_id, 1, &p, NULL);
-    glCompileShader(m_id);
-    checkErrors();
-  }
-  void checkErrors() {
-    int success;
-    char infoLog[512];
-    glGetShaderiv(m_id, GL_COMPILE_STATUS, &success);
-    if (!success) {
-      glGetShaderInfoLog(m_id, 512, NULL, infoLog);
-      std::cout << "ERROR::SHADER::COMPILATION_FAILED\n"
-                << infoLog << std::endl;
-    };
-  }
-  ~Shader() { glDeleteShader(m_id); }
-  GLuint id() { return m_id; }
-
-private:
-  GLuint m_id{};
-};
-
-class ShaderProgram {
-public:
-  ShaderProgram(Shader &&vertexShader, Shader &&fragmentShader)
-      : m_vertexShader(std::move(vertexShader)),
-        m_fragmentShader(std::move(fragmentShader)) {
-    m_id = glCreateProgram();
-    glAttachShader(m_id, vertexShader.id());
-    glAttachShader(m_id, fragmentShader.id());
-    glLinkProgram(m_id);
-  }
-  void use() { glUseProgram(m_id); }
-  ~ShaderProgram() { glDeleteProgram(m_id); }
-  GLuint id() { return m_id; }
-
-private:
-  GLuint m_id{};
-  Shader m_vertexShader;
-  Shader m_fragmentShader;
-};
-
-class VAO {
-public:
-  VAO() {
-    glGenVertexArrays(1, &m_id);
-    if (m_id == 0) {
-      cout << "Failed to generate Vertex Array Object" << endl;
-      return;
-    }
-  }
-  ~VAO() { glDeleteVertexArrays(1, &m_id); }
-  void setAttribPointer(GLuint index, GLuint size, GLenum type,
-                        GLboolean normalized, GLsizei stride,
-                        const void *pointer) {
-    bind();
-    glVertexAttribPointer(index, size, type, normalized, stride, pointer);
-  }
-  void bind() { glBindVertexArray(m_id); }
-  void unbind() { glBindVertexArray(0); }
-  GLuint id() { return m_id; }
-
-private:
-  GLuint m_id{};
-};
-
-class VBO {
-public:
-  VBO(const std::vector<float> *vertices) {
-    glGenBuffers(1, &m_id);
-    if (m_id == 0) {
-      cout << "Failed to generate Vertex Buffer Object" << endl;
-      return;
-    }
-    bind();
-    glBufferData(GL_ARRAY_BUFFER, vertices->size() * sizeof(float),
-                 vertices->data(), GL_STATIC_DRAW);
-  }
-  ~VBO() { glDeleteBuffers(1, &m_id); }
-  void bind() { glBindBuffer(GL_ARRAY_BUFFER, m_id); }
-  void unbind() { glBindBuffer(GL_ARRAY_BUFFER, 0); }
-  GLuint id() { return m_id; }
-
-private:
-  GLuint m_id{};
-};
 
 int main() {
   // Initialize ImGui

@@ -63,6 +63,10 @@ target_include_directories(ImGui PUBLIC
 # Set source files
 set(SOURCES
     src/main.cpp
+    src/Shader.cpp
+    src/ShaderProgram.cpp
+    src/VBO.cpp
+    src/VAO.cpp
 )
 
 # Find OpenGL
@@ -79,6 +83,7 @@ find_package(glm REQUIRED)
 
 # Include directories for OpenGL, GLEW, GLFW, and ImGui
 include_directories(
+    ${CMAKE_SOURCE_DIR}/include
     ${OPENGL_INCLUDE_DIRS}
     ${GLEW_INCLUDE_DIRS}
     ${GLFW_INCLUDE_DIRS}
