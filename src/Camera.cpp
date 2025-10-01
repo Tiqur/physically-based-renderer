@@ -17,9 +17,7 @@ float Camera::getFarPlane() const {
 }
 
 glm::vec3 Camera::getCamPos() const {
-    return cam.pos;
-}
-
+    return cam.pos; }
 float Camera::getCamYaw() const {
     return cam.yaw;
 }
@@ -63,7 +61,16 @@ void Camera::toggleGhostMode() {
     if (!ghostMode) {
         ghostQuad = cam;
         savedCam = cam;
-        cam.pos = ghostQuad.pos + glm::vec3(0.0f, 0.0f, 1.0f);
+
+        // Calculate distance offset using normal vector
+        glm::vec3 forward;
+        forward.x = cos(glm::radians(getCamYaw())) * cos(glm::radians(getCamPitch()));
+        forward.y = sin(glm::radians(getCamPitch()));
+        forward.z = sin(glm::radians(getCamYaw())) * cos(glm::radians(getCamPitch()));
+        forward = glm::normalize(forward);
+        float distance = 2.0f;
+
+        cam.pos = ghostQuad.pos - (forward * distance);
     } else {
         cam = ghostQuad;
     }
