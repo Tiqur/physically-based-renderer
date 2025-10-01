@@ -37,6 +37,7 @@ public:
     float getFov() const;
     float getNearPlane() const;
     float getFarPlane() const;
+    float getMoveSpeed() const;
 
     glm::vec3 getCamPos() const;
     float getCamYaw() const;
@@ -50,5 +51,12 @@ public:
 
     // Ghost mode toggle
     void toggleGhostMode();
+
+    // Setters
+    void setCamPos(glm::vec3);
+    void setCamYaw(float);
+    void setCamPitch(float);
+    void setFov(float newFov);
+    void setMoveSpeed(float newSpeed);
 };
 

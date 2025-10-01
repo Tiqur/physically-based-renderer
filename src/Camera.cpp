@@ -28,6 +28,10 @@ float Camera::getCamPitch() const {
     return cam.pitch;
 }
 
+float Camera::getMoveSpeed() const {
+    return movement.moveSpeed;
+}
+
 glm::vec3 Camera::getGhostPos() const {
     return ghostQuad.pos;
 }
@@ -44,6 +48,16 @@ bool Camera::getGhostMode() const {
     return ghostMode;
 }
 
+void Camera::setFov(float newFov) {
+    if (newFov < 10.0f) newFov = 10.0f;
+    if (newFov > 120.0f) newFov = 120.0f;
+    projection.fov = newFov;
+}
+
+void Camera::setMoveSpeed(float newSpeed) {
+    movement.moveSpeed = newSpeed;
+}
+
 // Toggle Ghost Mode
 void Camera::toggleGhostMode() {
     if (!ghostMode) {
@@ -55,4 +69,17 @@ void Camera::toggleGhostMode() {
     }
     ghostMode = !ghostMode;
 }
+
+void Camera::setCamPos(glm::vec3 newPos) {
+  cam.pos = newPos;
+}
+
+void Camera::setCamYaw(float newYaw) {
+  cam.yaw = newYaw;
+}
+
+void Camera::setCamPitch(float newPitch) {
+  cam.pitch = newPitch;
+}
+
 

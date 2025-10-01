@@ -16,6 +16,8 @@
 #include <iostream>
 #include <vector>
 
+using std::cout, std::endl;
+
 std::string vertexShaderSource = R"(
     #version 330 core
     layout (location = 0) in vec3 aPos;
@@ -47,18 +49,110 @@ std::vector<float> vertices = {
     1.0f,  -1.0f, 0.0f, // ***
 };
 
-using std::cout, std::endl;
+Camera cam = Camera(); 
+
+// Mouse state
+static bool isDragging = false;
+static double lastMouseX = 0.0;
+static double lastMouseY = 0.0;
+static float mouseSensitivity = 0.1f;
+
+// Delta time
+static float deltaTime = 0.0f;
+static float lastFrame = 0.0f;
+
 void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
   (void)window;
   glViewport(0, 0, width, height);
 }
 
-void processInput(GLFWwindow *window) {
-  if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-    glfwSetWindowShouldClose(window, true);
+void mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {
+    ImGui_ImplGlfw_MouseButtonCallback(window, button, action, mods);
+
+    ImGuiIO& io = ImGui::GetIO();
+    if (io.WantCaptureMouse) {
+        return;
+    }
 }
 
-Camera cam = Camera(); 
+void scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
+    ImGui_ImplGlfw_ScrollCallback(window, xoffset, yoffset);
+
+    ImGuiIO& io = ImGui::GetIO();
+    if (io.WantCaptureMouse) {
+        return;
+    }
+
+    float currentFov = cam.getFov();
+    currentFov -= (float)yoffset * 2.0f;
+    cam.setFov(currentFov);
+}
+
+
+void cursor_position_callback(GLFWwindow* window, double xpos, double ypos) {
+  ImGui_ImplGlfw_CursorPosCallback(window, xpos, ypos);
+  ImGuiIO& io = ImGui::GetIO();
+  
+  bool shouldDrag = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS && !io.WantCaptureMouse;
+  
+  if (shouldDrag) {
+    if (!isDragging) {
+      isDragging = true;
+      lastMouseX = xpos;
+      lastMouseY = ypos;
+    } else {
+      // Continue dragging
+      double xoffset = xpos - lastMouseX;
+      double yoffset = lastMouseY - ypos;
+      
+      lastMouseX = xpos;
+      lastMouseY = ypos;
+      
+      cam.setCamYaw(cam.getCamYaw() + xoffset * mouseSensitivity);
+      cam.setCamPitch(cam.getCamPitch() + yoffset * mouseSensitivity);
+      
+      if (cam.getCamPitch() > 89.0f) cam.setCamPitch(89.0f);
+      if (cam.getCamPitch() < -89.0f) cam.setCamPitch(-89.0f);
+    }
+  } else {
+    isDragging = false;
+  }
+}
+
+void processInput(GLFWwindow *window, float deltaTime, const glm::vec3& forward, const glm::vec3& right, const glm::vec3& up) {
+  ImGuiIO& io = ImGui::GetIO();
+  
+  if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
+    glfwSetWindowShouldClose(window, true);
+  }
+  
+  if (io.WantCaptureKeyboard) {
+    return;
+  }
+  
+  float velocity = cam.getMoveSpeed() * deltaTime * 10.0f;
+  
+  if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
+    cam.setCamPos(cam.getCamPos() + forward * velocity);
+  }
+  if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
+    cam.setCamPos(cam.getCamPos() - forward * velocity);
+  }
+  if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
+    cam.setCamPos(cam.getCamPos() - right * velocity);
+  }
+  if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
+    cam.setCamPos(cam.getCamPos() + right * velocity);
+  }
+  
+  if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) {
+    cam.setCamPos(cam.getCamPos() + up * velocity);
+  }
+  if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS || 
+      glfwGetKey(window, GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS) {
+    cam.setCamPos(cam.getCamPos() - up * velocity);
+  }
+}
 
 // TODO refactor/move 
 // Renderer Settings
@@ -107,8 +201,11 @@ int main() {
   // Set the viewport
   glViewport(0, 0, 800, 600);
 
-  // Register the framebuffer size callback
+  // Register callbacks
   glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+  glfwSetScrollCallback(window, scroll_callback);
+  glfwSetCursorPosCallback(window, cursor_position_callback);
+  glfwSetMouseButtonCallback(window, mouse_button_callback);
 
   Shader vertexShader(&vertexShaderSource, GL_VERTEX_SHADER);
   Shader fragmentShader(&fragmentShaderSource, GL_FRAGMENT_SHADER);
@@ -153,6 +250,12 @@ int main() {
 
   // Main render loop
   while (!glfwWindowShouldClose(window)) {
+
+    // Calculate delta time
+    float currentFrame = glfwGetTime();
+    deltaTime = currentFrame - lastFrame;
+    lastFrame = currentFrame;
+
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
@@ -174,21 +277,19 @@ int main() {
 
     // Calculate camera forward, right, up vectors
     glm::vec3 forward;
-    forward.x = sin(glm::radians(cam.getCamYaw())) * cos(glm::radians(cam.getCamPitch()));
-    forward.y = -sin(glm::radians(cam.getCamPitch()));
-    forward.z = -cos(glm::radians(cam.getCamYaw())) * cos(glm::radians(cam.getCamPitch()));
+    forward.x = cos(glm::radians(cam.getCamYaw())) * cos(glm::radians(cam.getCamPitch()));
+    forward.y = sin(glm::radians(cam.getCamPitch()));
+    forward.z = sin(glm::radians(cam.getCamYaw())) * cos(glm::radians(cam.getCamPitch()));
     forward = glm::normalize(forward);
-    
-    //glm::vec3 worldUp = glm::vec3(0.0f, 1.0f, 0.0f);
-    //glm::vec3 right = glm::normalize(glm::cross(forward, worldUp));
-    //glm::vec3 up = worldUp;
 
-    // View matrix
-    glm::mat4 view = glm::mat4(1.0f);
-    view = glm::rotate(view, glm::radians(-cam.getCamYaw()), glm::vec3(0.0f, 1.0f, 0.0f));
-    view = glm::rotate(view, glm::radians(-cam.getCamPitch()), glm::vec3(1.0f, 0.0f, 0.0f));
-    view = glm::translate(view, -cam.getCamPos());
+    glm::vec3 worldUp = glm::vec3(0.0f, 1.0f, 0.0f);
+    glm::vec3 right = glm::normalize(glm::cross(forward, worldUp));
+    glm::vec3 up = glm::normalize(glm::cross(right, forward));
 
+    // View matrix - use lookAt for proper camera positioning
+    glm::mat4 view = glm::lookAt(cam.getCamPos(), cam.getCamPos() + forward, up);
+
+    // Projection matrix
     glm::mat4 projection = glm::perspective(glm::radians(cam.getFov()), 800.0f / 600.0f, cam.getNearPlane(), cam.getFarPlane());
 
     glBindVertexArray(vao.id());
@@ -258,7 +359,7 @@ int main() {
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
     // Process user input
-    processInput(window);
+    processInput(window, deltaTime, forward, right, up);
 
     // Swap buffers and poll events
     glfwSwapBuffers(window);
