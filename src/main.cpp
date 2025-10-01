@@ -13,6 +13,38 @@
 #include <iostream>
 #include <vector>
 
+class Shape {
+public:
+  glm::vec3 position = glm::vec3(0.0f, 0.0f, 0.0f);
+  
+  virtual ~Shape() = default;
+  virtual std::vector<float> getVertices() const = 0;
+  
+  // Transform to world space
+  glm::mat4 getModelMatrix() const {
+    return glm::translate(glm::mat4(1.0f), position);
+  }
+};
+
+class Triangle : public Shape {
+public:
+  glm::vec3 v0, v1, v2;
+  
+  Triangle(glm::vec3 vertex0 = glm::vec3(-0.5f, -0.5f, 0.0f),
+           glm::vec3 vertex1 = glm::vec3(0.5f, -0.5f, 0.0f),
+           glm::vec3 vertex2 = glm::vec3(0.0f, 0.5f, 0.0f))
+    : v0(vertex0), v1(vertex1), v2(vertex2) {}
+  
+  std::vector<float> getVertices() const override {
+    return {
+      v0.x, v0.y, v0.z,
+      v1.x, v1.y, v1.z,
+      v2.x, v2.y, v2.z
+    };
+  }
+};
+
+
 std::string vertexShaderSource = R"(
     #version 330 core
     layout (location = 0) in vec3 aPos;
@@ -42,10 +74,6 @@ std::vector<float> vertices = {
     -1.0f, -1.0f, 0.0f, //   *
     1.0f,  1.0f,  0.0f, //  **
     1.0f,  -1.0f, 0.0f, // ***
-                        //
-    -2.0f, -2.0f, 0.0f, //   *
-    2.0f,  2.0f,  0.0f, //  **
-    2.0f,  -2.0f, 0.0f, // ***
 };
 
 using std::cout, std::endl;
@@ -64,9 +92,21 @@ void processInput(GLFWwindow *window) {
 static int threadCount = 1;
 
 // Camera Settings
+static glm::vec3 camPosition = glm::vec3(0.0f, 0.0f, 0.0f);
 static float camYaw = 0.0f;
 static float camPitch = 0.0f;
-float rotationSpeed = 5.0f;
+static float rotationSpeed = 5.0f;
+static float moveSpeed = 0.5f;
+
+// Ghost mode settings
+static bool ghostMode = false;
+static glm::vec3 ghostQuadPosition = glm::vec3(0.0f, 0.0f, 0.0f);
+static float ghostQuadYaw = 0.0f;
+static float ghostQuadPitch = 0.0f;
+static glm::vec3 savedCamPosition = glm::vec3(0.0f, 0.0f, 0.0f);
+static float savedCamYaw = 0.0f;
+static float savedCamPitch = 0.0f;
+
 
 // Projection settings
 static float fov = 45.0f;
@@ -133,6 +173,32 @@ int main() {
   glEnable(GL_BLEND);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
+  // --- SETUP WORLD OBJECTS ---
+  std::vector<Shape*> worldObjects;
+  
+  for (int i=0; i<32; i++) {
+    Triangle* triangle = new Triangle();
+    triangle->position = glm::vec3(0.0f, 0, (float)(-i)*0.1);
+    worldObjects.push_back(triangle);
+  }
+  
+  // Setup VBO/VAO for each shape
+  std::vector<VBO*> shapeVBOs;
+  std::vector<VAO*> shapeVAOs;
+  
+  for (Shape* shape : worldObjects) {
+    std::vector<float> shapeVerts = shape->getVertices();
+    VBO* shapeVBO = new VBO(&shapeVerts);
+    VAO* shapeVAO = new VAO();
+    
+    shapeVAO->bind();
+    shapeVAO->setAttribPointer(0, 3, GL_FLOAT, false, 3 * sizeof(float), (void *)0);
+    glEnableVertexAttribArray(0);
+    
+    shapeVBOs.push_back(shapeVBO);
+    shapeVAOs.push_back(shapeVAO);
+  }
+
   // Main render loop
   while (!glfwWindowShouldClose(window)) {
     ImGui_ImplOpenGL3_NewFrame();
@@ -149,20 +215,28 @@ int main() {
     GLuint modelLoc = glGetUniformLocation(program.id(), "model");
     GLuint viewLoc = glGetUniformLocation(program.id(), "view");
     GLuint projectionLoc = glGetUniformLocation(program.id(), "projection");
-
-    // Set Color
     GLint colorLoc = glGetUniformLocation(program.id(), "uColor");
 
     // Model matrix
     glm::mat4 model = glm::mat4(1.0f);
 
+    // Calculate camera forward, right, up vectors
+    glm::vec3 forward;
+    forward.x = sin(glm::radians(camYaw)) * cos(glm::radians(camPitch));
+    forward.y = -sin(glm::radians(camPitch));
+    forward.z = -cos(glm::radians(camYaw)) * cos(glm::radians(camPitch));
+    forward = glm::normalize(forward);
+    
+    glm::vec3 worldUp = glm::vec3(0.0f, 1.0f, 0.0f);
+    glm::vec3 right = glm::normalize(glm::cross(forward, worldUp));
+    glm::vec3 up = worldUp;
+
     // View matrix
     glm::mat4 view = glm::mat4(1.0f);
-    view = glm::rotate(view, glm::radians(-camYaw), glm::vec3(0.0f, 1.0f, 0.0f)); // Yaw
-    view = glm::rotate(view, glm::radians(-camPitch), glm::vec3(1.0f, 0.0f, 0.0f)); // Pitch
-    view = glm::translate(view, glm::vec3(0.0f, 0.0f, -5.0f));
+    view = glm::rotate(view, glm::radians(-camYaw), glm::vec3(0.0f, 1.0f, 0.0f));
+    view = glm::rotate(view, glm::radians(-camPitch), glm::vec3(1.0f, 0.0f, 0.0f));
+    view = glm::translate(view, -camPosition);
 
-    // Projection matrix
     glm::mat4 projection = glm::perspective(glm::radians(fov), 800.0f / 600.0f, nearPlane, farPlane);
 
     glBindVertexArray(vao.id());
@@ -177,6 +251,33 @@ int main() {
     ImGui::End();
 
     ImGui::Begin("Camera");
+    
+    // Ghost mode toggle
+    if (ImGui::Button(ghostMode ? "Disable Ghost" : "Enable Ghost")) {
+      if (!ghostMode) {
+        // Entering ghost mode
+        ghostQuadPosition = camPosition;
+        ghostQuadYaw = camYaw;
+        ghostQuadPitch = camPitch;
+        
+        savedCamPosition = camPosition;
+        savedCamYaw = camYaw;
+        savedCamPitch = camPitch;
+        
+        // Move camera behind quad
+        camPosition = ghostQuadPosition - forward * 5.0f;
+      } else {
+        // Exiting ghost mode - teleport back
+        camPosition = ghostQuadPosition;
+        camYaw = ghostQuadYaw;
+        camPitch = ghostQuadPitch;
+      }
+      ghostMode = !ghostMode;
+    }
+    
+    ImGui::Separator();
+    
+    // Camera rotation
     if (ImGui::Button("Left")) {
       camYaw -= rotationSpeed;
     }
@@ -191,9 +292,43 @@ int main() {
     if (ImGui::Button("Down")) {
       camPitch -= rotationSpeed;
     }
+    
+    ImGui::Separator();
+    
+    // Camera movement
+    if (ImGui::Button("Forward")) {
+      camPosition += forward * moveSpeed;
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Backward")) {
+      camPosition -= forward * moveSpeed;
+    }
+    if (ImGui::Button("Strafe Left")) {
+      camPosition -= right * moveSpeed;
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Strafe Right")) {
+      camPosition += right * moveSpeed;
+    }
+    if (ImGui::Button("Move Up")) {
+      camPosition += up * moveSpeed;
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Move Down")) {
+      camPosition -= up * moveSpeed;
+    }
+    
+    ImGui::SliderFloat("Move Speed", &moveSpeed, 0.1f, 5.0f);
     ImGui::SliderFloat("Rotation Speed", &rotationSpeed, 1.0f, 45.0f);
+    
+    ImGui::Separator();
+    
+    ImGui::Text("Position: (%.2f, %.2f, %.2f)", camPosition.x, camPosition.y, camPosition.z);
     ImGui::Text("Yaw:   %.2f", camYaw);
     ImGui::Text("Pitch: %.2f", camPitch);
+    
+    ImGui::Separator();
+    
     ImGui::SliderFloat("FOV", &fov, 10.0f, 120.0f);
     ImGui::SliderFloat("Near Plane", &nearPlane, 0.01f, 10.0f);
     ImGui::SliderFloat("Far Plane", &farPlane, 10.0f, 500.0f);
@@ -203,21 +338,43 @@ int main() {
     glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
     glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
 
-    // Raycast quad (fixed to camera)
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-    glm::mat4 orthoProjection = glm::ortho(-1.0f, 1.0f, -1.0f, 1.0f, 0.1f, 10.0f);
-    glm::mat4 hudView = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -1.0f));
-    glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(orthoProjection));
-    glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(hudView));
-    glUniform4f(colorLoc, 0.0f, 1.0f, 1.0f, 0.0f);
-    glDrawArrays(GL_TRIANGLES, 0, 6);
-    
-    // Wireframe objects
+    if (ghostMode) {
+      glm::mat4 quadModel = glm::mat4(1.0f);
+      quadModel = glm::translate(quadModel, ghostQuadPosition);
+      quadModel = glm::rotate(quadModel, glm::radians(ghostQuadYaw), glm::vec3(0.0f, 1.0f, 0.0f));
+      quadModel = glm::rotate(quadModel, glm::radians(ghostQuadPitch), glm::vec3(1.0f, 0.0f, 0.0f));
+      quadModel = glm::translate(quadModel, glm::vec3(0.0f, 0.0f, -1.0f));
+      quadModel = glm::scale(quadModel, glm::vec3(1.0f, 1.0f, 1.0f));
+      
+      glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(quadModel));
+      glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
+      glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+      glUniform4f(colorLoc, 0.0f, 1.0f, 1.0f, 0.3f);
+      glDrawArrays(GL_TRIANGLES, 0, 6);
+    } else {
+      glm::mat4 orthoProjection = glm::ortho(-1.0f, 1.0f, -1.0f, 1.0f, 0.1f, 10.0f);
+      glm::mat4 hudView = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -1.0f));
+      
+      glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(orthoProjection));
+      glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(hudView));
+      glUniform4f(colorLoc, 0.0f, 1.0f, 1.0f, 0.3f);
+      glDrawArrays(GL_TRIANGLES, 0, 6);
+    }
+
+    // Restore perspective projection and view matrix for world objects
     glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
     glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+    
+    // Draw all world objects
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-    glUniform4f(colorLoc, 1.0f, 1.0f, 1.0f, 0.4f);
-    glDrawArrays(GL_TRIANGLES, 6, 9-6);
+    for (size_t i = 0; i < worldObjects.size(); i++) {
+      glm::mat4 shapeModel = worldObjects[i]->getModelMatrix();
+      glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(shapeModel));
+      glUniform4f(colorLoc, 1.0f, 1.0f, 1.0f, 1.0f);
+      glBindVertexArray(shapeVAOs[i]->id());
+      glDrawArrays(GL_TRIANGLES, 0, worldObjects[i]->getVertices().size() / 3);
+    }
 
     // Render ImGui
     ImGui::Render();
@@ -232,6 +389,16 @@ int main() {
   }
 
   // Clean up and exit
+  for (Shape* shape : worldObjects) {
+    delete shape;
+  }
+  for (VBO* vbo : shapeVBOs) {
+    delete vbo;
+  }
+  for (VAO* vao : shapeVAOs) {
+    delete vao;
+  }
+
   glfwDestroyWindow(window);
   glfwTerminate();
   ImGui_ImplOpenGL3_Shutdown();
