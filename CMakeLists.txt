@@ -67,6 +67,7 @@ set(SOURCES
     src/ShaderProgram.cpp
     src/VBO.cpp
     src/VAO.cpp
+    src/Camera.cpp
 )
 
 # Find OpenGL

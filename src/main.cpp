@@ -2,6 +2,7 @@
 #include "ShaderProgram.h"
 #include "VAO.h"
 #include "VBO.h"
+#include "Camera.h"
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
@@ -86,72 +87,6 @@ void processInput(GLFWwindow *window) {
   if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
     glfwSetWindowShouldClose(window, true);
 }
-
-class Camera {
-  public:
-    // Camera Settings
-    glm::vec3 camPosition;
-    float camYaw;
-    float camPitch;
-    float rotationSpeed;
-    float moveSpeed;
-
-    // Ghost mode settings
-    bool ghostMode;
-    glm::vec3 ghostQuadPosition = glm::vec3(0.0f, 0.0f, 0.0f);
-    float ghostQuadYaw = 0.0f;
-    float ghostQuadPitch = 0.0f;
-    glm::vec3 savedCamPosition = glm::vec3(0.0f, 0.0f, 0.0f);
-    float savedCamYaw = 0.0f;
-    float savedCamPitch = 0.0f;
-
-    // Projection settings
-    float fov;
-    float nearPlane;
-    float farPlane;
-
-    Camera() {
-     camPosition = glm::vec3(0.0f, 0.0f, 0.0f);
-     camYaw = 0.0f;
-     camPitch = 0.0f;
-     rotationSpeed = 5.0f;
-     moveSpeed = 0.5f;
-
-     ghostMode = false;
-     ghostQuadPosition = glm::vec3(0.0f, 0.0f, 0.0f);
-     ghostQuadYaw = 0.0f;
-     ghostQuadPitch = 0.0f;
-     savedCamPosition = glm::vec3(0.0f, 0.0f, 0.0f);
-     savedCamYaw = 0.0f;
-     savedCamPitch = 0.0f;
-
-     fov = 45.0f;
-     nearPlane = 0.1f;
-     farPlane = 100.0f;
-    }
-
-    void toggleGhostMode() {
-      if (!ghostMode) {
-        // Entering ghost mode
-        ghostQuadPosition = camPosition;
-        ghostQuadYaw = camYaw;
-        ghostQuadPitch = camPitch;
-        
-        savedCamPosition = camPosition;
-        savedCamYaw = camYaw;
-        savedCamPitch = camPitch;
-        
-        // Move camera behind quad
-        camPosition = ghostQuadPosition + glm::vec3(0.0f, 0.0f, 1.0f);
-      } else {
-        // Exiting ghost mode - teleport back
-        camPosition = ghostQuadPosition;
-        camYaw = ghostQuadYaw;
-        camPitch = ghostQuadPitch;
-      }
-      ghostMode = !ghostMode;
-    }
-};
 
 Camera cam = Camera(); 
 
@@ -269,9 +204,9 @@ int main() {
 
     // Calculate camera forward, right, up vectors
     glm::vec3 forward;
-    forward.x = sin(glm::radians(cam.camYaw)) * cos(glm::radians(cam.camPitch));
-    forward.y = -sin(glm::radians(cam.camPitch));
-    forward.z = -cos(glm::radians(cam.camYaw)) * cos(glm::radians(cam.camPitch));
+    forward.x = sin(glm::radians(cam.getCamYaw())) * cos(glm::radians(cam.getCamPitch()));
+    forward.y = -sin(glm::radians(cam.getCamPitch()));
+    forward.z = -cos(glm::radians(cam.getCamYaw())) * cos(glm::radians(cam.getCamPitch()));
     forward = glm::normalize(forward);
     
     //glm::vec3 worldUp = glm::vec3(0.0f, 1.0f, 0.0f);
@@ -280,11 +215,11 @@ int main() {
 
     // View matrix
     glm::mat4 view = glm::mat4(1.0f);
-    view = glm::rotate(view, glm::radians(-cam.camYaw), glm::vec3(0.0f, 1.0f, 0.0f));
-    view = glm::rotate(view, glm::radians(-cam.camPitch), glm::vec3(1.0f, 0.0f, 0.0f));
-    view = glm::translate(view, -cam.camPosition);
+    view = glm::rotate(view, glm::radians(-cam.getCamYaw()), glm::vec3(0.0f, 1.0f, 0.0f));
+    view = glm::rotate(view, glm::radians(-cam.getCamPitch()), glm::vec3(1.0f, 0.0f, 0.0f));
+    view = glm::translate(view, -cam.getCamPos());
 
-    glm::mat4 projection = glm::perspective(glm::radians(cam.fov), 800.0f / 600.0f, cam.nearPlane, cam.farPlane);
+    glm::mat4 projection = glm::perspective(glm::radians(cam.getFov()), 800.0f / 600.0f, cam.getNearPlane(), cam.getFarPlane());
 
     glBindVertexArray(vao.id());
 
@@ -300,7 +235,7 @@ int main() {
     ImGui::Begin("Camera");
     
     // Ghost mode toggle
-    if (ImGui::Button(cam.ghostMode ? "Disable Ghost" : "Enable Ghost")) {
+    if (ImGui::Button(cam.getGhostMode() ? "Disable Ghost" : "Enable Ghost")) {
       cam.toggleGhostMode();
     }
     
@@ -311,11 +246,11 @@ int main() {
     glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
 
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-    if (cam.ghostMode) {
+    if (cam.getGhostMode()) {
       glm::mat4 quadModel = glm::mat4(1.0f);
-      quadModel = glm::translate(quadModel, cam.ghostQuadPosition);
-      quadModel = glm::rotate(quadModel, glm::radians(cam.ghostQuadYaw), glm::vec3(0.0f, 1.0f, 0.0f));
-      quadModel = glm::rotate(quadModel, glm::radians(cam.ghostQuadPitch), glm::vec3(1.0f, 0.0f, 0.0f));
+      quadModel = glm::translate(quadModel, cam.getGhostPos());
+      quadModel = glm::rotate(quadModel, glm::radians(cam.getGhostYaw()), glm::vec3(0.0f, 1.0f, 0.0f));
+      quadModel = glm::rotate(quadModel, glm::radians(cam.getGhostPitch()), glm::vec3(1.0f, 0.0f, 0.0f));
       quadModel = glm::translate(quadModel, glm::vec3(0.0f, 0.0f, -1.0f));
       quadModel = glm::scale(quadModel, glm::vec3(1.0f, 1.0f, 1.0f));
       
