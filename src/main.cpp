@@ -3,6 +3,8 @@
 #include "VAO.h"
 #include "VBO.h"
 #include "Camera.h"
+#include "Shape.h"
+#include "Triangle.h"
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
@@ -13,38 +15,6 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <iostream>
 #include <vector>
-
-class Shape {
-public:
-  glm::vec3 position = glm::vec3(0.0f, 0.0f, 0.0f);
-  
-  virtual ~Shape() = default;
-  virtual std::vector<float> getVertices() const = 0;
-  
-  // Transform to world space
-  glm::mat4 getModelMatrix() const {
-    return glm::translate(glm::mat4(1.0f), position);
-  }
-};
-
-class Triangle : public Shape {
-public:
-  glm::vec3 v0, v1, v2;
-  
-  Triangle(glm::vec3 vertex0 = glm::vec3(-0.5f, -0.5f, 0.0f),
-           glm::vec3 vertex1 = glm::vec3(0.5f, -0.5f, 0.0f),
-           glm::vec3 vertex2 = glm::vec3(0.0f, 0.5f, 0.0f))
-    : v0(vertex0), v1(vertex1), v2(vertex2) {}
-  
-  std::vector<float> getVertices() const override {
-    return {
-      v0.x, v0.y, v0.z,
-      v1.x, v1.y, v1.z,
-      v2.x, v2.y, v2.z
-    };
-  }
-};
-
 
 std::string vertexShaderSource = R"(
     #version 330 core

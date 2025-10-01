@@ -68,6 +68,8 @@ set(SOURCES
     src/VBO.cpp
     src/VAO.cpp
     src/Camera.cpp
+    src/Shape.cpp
+    src/objects/Triangle.cpp
 )
 
 # Find OpenGL
