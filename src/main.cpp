@@ -318,13 +318,15 @@ int main() {
 
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     if (cam.getGhostMode()) {
-      glm::mat4 quadModel = glm::mat4(1.0f);
-      quadModel = glm::translate(quadModel, cam.getGhostPos());
-      quadModel = glm::rotate(quadModel, glm::radians(cam.getGhostYaw()), glm::vec3(0.0f, 1.0f, 0.0f));
-      quadModel = glm::rotate(quadModel, glm::radians(cam.getGhostPitch()), glm::vec3(1.0f, 0.0f, 0.0f));
-      quadModel = glm::translate(quadModel, glm::vec3(0.0f, 0.0f, -1.0f));
-      quadModel = glm::scale(quadModel, glm::vec3(1.0f, 1.0f, 1.0f));
-      
+      glm::vec3 ghostForward = cam.getGhostForward();
+
+      glm::vec3 worldUp = glm::vec3(0.0f, 1.0f, 0.0f);
+      glm::vec3 ghostRight = glm::normalize(glm::cross(ghostForward, worldUp));
+      glm::vec3 ghostUp = glm::normalize(glm::cross(ghostRight, ghostForward));
+
+      glm::mat4 ghostViewMatrix = glm::lookAt(cam.getGhostPos(), cam.getGhostPos() + ghostForward, ghostUp);
+      glm::mat4 quadModel = glm::inverse(ghostViewMatrix);
+ 
       glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(quadModel));
       glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
       glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));

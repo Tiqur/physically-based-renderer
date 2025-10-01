@@ -42,6 +42,9 @@ public:
     glm::vec3 getCamPos() const;
     float getCamYaw() const;
     float getCamPitch() const;
+    
+    glm::vec3 getCamForward();
+    glm::vec3 getGhostForward();
 
     glm::vec3 getGhostPos() const;
     float getGhostYaw() const;

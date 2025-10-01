@@ -63,11 +63,8 @@ void Camera::toggleGhostMode() {
         savedCam = cam;
 
         // Calculate distance offset using normal vector
-        glm::vec3 forward;
-        forward.x = cos(glm::radians(getCamYaw())) * cos(glm::radians(getCamPitch()));
-        forward.y = sin(glm::radians(getCamPitch()));
-        forward.z = sin(glm::radians(getCamYaw())) * cos(glm::radians(getCamPitch()));
-        forward = glm::normalize(forward);
+        glm::vec3 forward = getCamForward();
+
         float distance = 2.0f;
 
         cam.pos = ghostQuad.pos - (forward * distance);
@@ -89,4 +86,21 @@ void Camera::setCamPitch(float newPitch) {
   cam.pitch = newPitch;
 }
 
+glm::vec3 Camera::getCamForward() {
+    glm::vec3 forward;
+    forward.x = cos(glm::radians(getGhostYaw())) * cos(glm::radians(getGhostPitch()));
+    forward.y = sin(glm::radians(getGhostPitch()));
+    forward.z = sin(glm::radians(getGhostYaw())) * cos(glm::radians(getGhostPitch()));
+    forward = glm::normalize(forward);
+    return forward;
+}
 
+
+glm::vec3 Camera::getGhostForward() {
+    glm::vec3 forward;
+    forward.x = cos(glm::radians(getCamYaw())) * cos(glm::radians(getCamPitch()));
+    forward.y = sin(glm::radians(getCamPitch()));
+    forward.z = sin(glm::radians(getCamYaw())) * cos(glm::radians(getCamPitch()));
+    forward = glm::normalize(forward);
+    return forward;
+}
