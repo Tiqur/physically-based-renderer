@@ -203,10 +203,18 @@ int main() {
     glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
     glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
 
+    // Raycast quad (fixed to camera)
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-    glUniform4f(colorLoc, 0.0f, 0.4f, 0.7f, 1.0f);
+    glm::mat4 orthoProjection = glm::ortho(-1.0f, 1.0f, -1.0f, 1.0f, 0.1f, 10.0f);
+    glm::mat4 hudView = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -1.0f));
+    glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(orthoProjection));
+    glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(hudView));
+    glUniform4f(colorLoc, 0.0f, 1.0f, 1.0f, 0.0f);
     glDrawArrays(GL_TRIANGLES, 0, 6);
-
+    
+    // Wireframe objects
+    glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
+    glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
     glUniform4f(colorLoc, 1.0f, 1.0f, 1.0f, 0.4f);
     glDrawArrays(GL_TRIANGLES, 6, 9-6);
