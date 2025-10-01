@@ -2,12 +2,11 @@
 #include <iostream>
 
 ShaderProgram::ShaderProgram(Shader &&vertexShader, Shader &&fragmentShader)
-    : m_vertexShader(std::move(vertexShader)),
-      m_fragmentShader(std::move(fragmentShader)) {
-  m_id = glCreateProgram();
-  glAttachShader(m_id, vertexShader.id());
-  glAttachShader(m_id, fragmentShader.id());
-  glLinkProgram(m_id);
+    : m_vertexShader(std::move(vertexShader)), m_fragmentShader(std::move(fragmentShader)) {
+    m_id = glCreateProgram();
+    glAttachShader(m_id, vertexShader.id());
+    glAttachShader(m_id, fragmentShader.id());
+    glLinkProgram(m_id);
 };
 
 void ShaderProgram::use() { glUseProgram(m_id); }

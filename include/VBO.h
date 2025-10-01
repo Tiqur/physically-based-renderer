@@ -4,13 +4,13 @@
 #include <vector>
 
 class VBO {
-public:
-  VBO(const std::vector<float> *vertices);
-  ~VBO();
-  void bind();
-  void unbind();
-  GLuint id();
+  public:
+    VBO(const std::vector<float> *vertices);
+    ~VBO();
+    void bind();
+    void unbind();
+    GLuint id();
 
-private:
-  GLuint m_id{};
+  private:
+    GLuint m_id{};
 };

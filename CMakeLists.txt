@@ -120,20 +120,20 @@ target_compile_features(OpenGLProject PRIVATE cxx_std_20)
 # Locate clang-format executable
 find_program(CLANG_FORMAT_EXECUTABLE clang-format)
 
-# Check if clang-format exists
-if (CLANG_FORMAT_EXECUTABLE)
-  # Collect all .cpp and .h files
-  file(GLOB ALL_SOURCE_FILES
-    ${CMAKE_SOURCE_DIR}/src/*.cpp
-    ${CMAKE_SOURCE_DIR}/include/*.h
-  )
-
-  add_custom_command(
-    TARGET OpenGLProject PRE_BUILD
-    COMMAND ${CLANG_FORMAT_EXECUTABLE} -i ${ALL_SOURCE_FILES}
-    COMMENT "Running clang-format before build"
-  )
-else()
-  message(FATAL_ERROR "clang-format executable not found!")
-endif()
+## Check if clang-format exists
+#if (CLANG_FORMAT_EXECUTABLE)
+#  # Collect all .cpp and .h files
+#  file(GLOB ALL_SOURCE_FILES
+#    ${CMAKE_SOURCE_DIR}/src/*.cpp
+#    ${CMAKE_SOURCE_DIR}/include/*.h
+#  )
+#
+#  add_custom_command(
+#    TARGET OpenGLProject PRE_BUILD
+#    COMMAND ${CLANG_FORMAT_EXECUTABLE} -i ${ALL_SOURCE_FILES}
+#    COMMENT "Running clang-format before build"
+#  )
+#else()
+#  message(FATAL_ERROR "clang-format executable not found!")
+#endif()
 

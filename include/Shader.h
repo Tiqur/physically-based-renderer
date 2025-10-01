@@ -4,12 +4,12 @@
 #include <string>
 
 class Shader {
-public:
-  Shader(std::string *shaderSource, GLenum shaderType);
-  void checkErrors();
-  ~Shader();
-  GLuint id();
+  public:
+    Shader(std::string *shaderSource, GLenum shaderType);
+    void checkErrors();
+    ~Shader();
+    GLuint id();
 
-private:
-  GLuint m_id{};
+  private:
+    GLuint m_id{};
 };

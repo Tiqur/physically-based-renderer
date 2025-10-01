@@ -16,9 +16,11 @@
 std::string vertexShaderSource = R"(
     #version 330 core
     layout (location = 0) in vec3 aPos;
-    uniform mat4 transform;
+    uniform mat4 model;
+    uniform mat4 view;
+    uniform mat4 projection;
     void main() {
-      gl_Position = transform*vec4(aPos.x, aPos.y, aPos.z, 1.0);
+      gl_Position = projection * view * model * vec4(aPos, 1.0);
     }
   )";
 std::string fragmentShaderSource = R"(
@@ -50,6 +52,20 @@ void processInput(GLFWwindow *window) {
   if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
     glfwSetWindowShouldClose(window, true);
 }
+
+// TODO refactor/move 
+// Renderer Settings
+static int threadCount = 1;
+
+// Camera Settings
+static float camYaw = 0.0f;
+static float camPitch = 0.0f;
+float rotationSpeed = 5.0f;
+
+// Projection settings
+static float fov = 45.0f;
+static float nearPlane = 0.1f;
+static float farPlane = 100.0f;
 
 int main() {
   // Initialize ImGui
@@ -84,7 +100,7 @@ int main() {
   }
 
   // Initialize GLEW
-  glewExperimental = GL_TRUE; // Ensure GLEW uses modern OpenGL techniques
+  glewExperimental = GL_TRUE;
   if (glewInit() != GLEW_OK) {
     std::cerr << "Failed to initialize GLEW" << std::endl;
     return -1;
@@ -107,8 +123,6 @@ int main() {
   vao.setAttribPointer(0, 3, GL_FLOAT, false, 3 * sizeof(float), (void *)0);
   glEnableVertexAttribArray(0);
 
-  static int threadCount = 1;
-
   // Main render loop
   while (!glfwWindowShouldClose(window)) {
     ImGui_ImplOpenGL3_NewFrame();
@@ -121,8 +135,22 @@ int main() {
 
     program.use();
 
-    GLuint transformLoc = glGetUniformLocation(program.id(), "transform");
-    glm::mat4 trans = glm::mat4(1.0f);
+    // Get uniform locations
+    GLuint modelLoc = glGetUniformLocation(program.id(), "model");
+    GLuint viewLoc = glGetUniformLocation(program.id(), "view");
+    GLuint projectionLoc = glGetUniformLocation(program.id(), "projection");
+
+    // Model matrix
+    glm::mat4 model = glm::mat4(1.0f);
+
+    // View matrix
+    glm::mat4 view = glm::mat4(1.0f);
+    view = glm::rotate(view, glm::radians(-camYaw), glm::vec3(0.0f, 1.0f, 0.0f)); // Yaw
+    view = glm::rotate(view, glm::radians(-camPitch), glm::vec3(1.0f, 0.0f, 0.0f)); // Pitch
+    view = glm::translate(view, glm::vec3(0.0f, 0.0f, -5.0f));
+
+    // Projection matrix
+    glm::mat4 projection = glm::perspective(glm::radians(fov), 800.0f / 600.0f, nearPlane, farPlane);
 
     glBindVertexArray(vao.id());
 
@@ -135,7 +163,32 @@ int main() {
     ImGui::SliderInt("Thread Count", &threadCount, 1, 16);
     ImGui::End();
 
-    glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(trans));
+    ImGui::Begin("Camera");
+    if (ImGui::Button("Left")) {
+      camYaw -= rotationSpeed;
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Right")) {
+      camYaw += rotationSpeed;
+    }
+    if (ImGui::Button("Up")) {
+      camPitch += rotationSpeed;
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Down")) {
+      camPitch -= rotationSpeed;
+    }
+    ImGui::SliderFloat("Rotation Speed", &rotationSpeed, 1.0f, 45.0f);
+    ImGui::Text("Yaw:   %.2f", camYaw);
+    ImGui::Text("Pitch: %.2f", camPitch);
+    ImGui::SliderFloat("FOV", &fov, 10.0f, 120.0f);
+    ImGui::SliderFloat("Near Plane", &nearPlane, 0.01f, 10.0f);
+    ImGui::SliderFloat("Far Plane", &farPlane, 10.0f, 500.0f);
+    ImGui::End();
+
+    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+    glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+    glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
     glDrawArrays(GL_TRIANGLES, 0, 6);
 
     // Render ImGui
