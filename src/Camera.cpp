@@ -98,9 +98,9 @@ glm::vec3 Camera::getCamForward() {
 
 glm::vec3 Camera::getGhostForward() {
     glm::vec3 forward;
-    forward.x = cos(glm::radians(getCamYaw())) * cos(glm::radians(getCamPitch()));
-    forward.y = sin(glm::radians(getCamPitch()));
-    forward.z = sin(glm::radians(getCamYaw())) * cos(glm::radians(getCamPitch()));
+    forward.x = cos(glm::radians(getGhostYaw())) * cos(glm::radians(getGhostPitch()));
+    forward.y = sin(glm::radians(getGhostPitch()));
+    forward.z = sin(glm::radians(getGhostYaw())) * cos(glm::radians(getGhostPitch()));
     forward = glm::normalize(forward);
     return forward;
 }
