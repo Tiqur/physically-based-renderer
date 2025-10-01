@@ -27,8 +27,10 @@ std::string fragmentShaderSource = R"(
     #version 330 core
     out vec4 FragColor;
 
+    uniform vec4 uColor;
+
     void main() {
-      FragColor = vec4(0.5f, 0.2f, 0.8f, 1.0f);
+      FragColor = uColor;
     }
   )";
 
@@ -40,6 +42,10 @@ std::vector<float> vertices = {
     -1.0f, -1.0f, 0.0f, //   *
     1.0f,  1.0f,  0.0f, //  **
     1.0f,  -1.0f, 0.0f, // ***
+                        //
+    -2.0f, -2.0f, 0.0f, //   *
+    2.0f,  2.0f,  0.0f, //  **
+    2.0f,  -2.0f, 0.0f, // ***
 };
 
 using std::cout, std::endl;
@@ -123,6 +129,10 @@ int main() {
   vao.setAttribPointer(0, 3, GL_FLOAT, false, 3 * sizeof(float), (void *)0);
   glEnableVertexAttribArray(0);
 
+  // Enable blending
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
   // Main render loop
   while (!glfwWindowShouldClose(window)) {
     ImGui_ImplOpenGL3_NewFrame();
@@ -130,7 +140,7 @@ int main() {
     ImGui::NewFrame();
 
     // Render OpenGL
-    glClearColor(0.2f, 0.4f, 0.4f, 1.0f);
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
     program.use();
@@ -139,6 +149,9 @@ int main() {
     GLuint modelLoc = glGetUniformLocation(program.id(), "model");
     GLuint viewLoc = glGetUniformLocation(program.id(), "view");
     GLuint projectionLoc = glGetUniformLocation(program.id(), "projection");
+
+    // Set Color
+    GLint colorLoc = glGetUniformLocation(program.id(), "uColor");
 
     // Model matrix
     glm::mat4 model = glm::mat4(1.0f);
@@ -189,7 +202,14 @@ int main() {
     glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
     glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
     glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
+
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    glUniform4f(colorLoc, 0.0f, 0.4f, 0.7f, 1.0f);
     glDrawArrays(GL_TRIANGLES, 0, 6);
+
+    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    glUniform4f(colorLoc, 1.0f, 1.0f, 1.0f, 0.4f);
+    glDrawArrays(GL_TRIANGLES, 6, 9-6);
 
     // Render ImGui
     ImGui::Render();
