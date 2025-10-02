@@ -1,9 +1,7 @@
 #include "Camera.h"
 
-// Constructor
 Camera::Camera() = default;
 
-// Getters
 float Camera::getFov() const {
     return projection.fov;
 }
@@ -17,7 +15,9 @@ float Camera::getFarPlane() const {
 }
 
 glm::vec3 Camera::getCamPos() const {
-    return cam.pos; }
+    return cam.position;
+}
+
 float Camera::getCamYaw() const {
     return cam.yaw;
 }
@@ -31,19 +31,23 @@ float Camera::getMoveSpeed() const {
 }
 
 glm::vec3 Camera::getGhostPos() const {
-    return ghostQuad.pos;
+    return ghostQuad.transform.position;
 }
 
 float Camera::getGhostYaw() const {
-    return ghostQuad.yaw;
+    return ghostQuad.transform.yaw;
 }
 
 float Camera::getGhostPitch() const {
-    return ghostQuad.pitch;
+    return ghostQuad.transform.pitch;
 }
 
 bool Camera::getGhostMode() const {
     return ghostMode;
+}
+
+const ImagePlane Camera::getImagePlane() const {
+    return ghostQuad;
 }
 
 void Camera::setFov(float newFov) {
@@ -56,51 +60,32 @@ void Camera::setMoveSpeed(float newSpeed) {
     movement.moveSpeed = newSpeed;
 }
 
-// Toggle Ghost Mode
 void Camera::toggleGhostMode() {
     if (!ghostMode) {
-        ghostQuad = cam;
+        ghostQuad.transform = cam;
         savedCam = cam;
 
-        // Calculate distance offset using normal vector
-        glm::vec3 forward = getCamForward();
-
+        glm::vec3 forward = cam.forward();
         float distance = 2.0f;
-
-        cam.pos = ghostQuad.pos - (forward * distance);
+        cam.position = ghostQuad.transform.position - (forward * distance);
     } else {
-        cam = ghostQuad;
+        cam = ghostQuad.transform;
     }
     ghostMode = !ghostMode;
 }
 
 void Camera::setCamPos(glm::vec3 newPos) {
-  cam.pos = newPos;
+    cam.position = newPos;
 }
 
 void Camera::setCamYaw(float newYaw) {
-  cam.yaw = newYaw;
+    cam.yaw = newYaw;
 }
 
 void Camera::setCamPitch(float newPitch) {
-  cam.pitch = newPitch;
+    cam.pitch = newPitch;
 }
 
-glm::vec3 Camera::getCamForward() {
-    glm::vec3 forward;
-    forward.x = cos(glm::radians(getGhostYaw())) * cos(glm::radians(getGhostPitch()));
-    forward.y = sin(glm::radians(getGhostPitch()));
-    forward.z = sin(glm::radians(getGhostYaw())) * cos(glm::radians(getGhostPitch()));
-    forward = glm::normalize(forward);
-    return forward;
-}
-
-
-glm::vec3 Camera::getGhostForward() {
-    glm::vec3 forward;
-    forward.x = cos(glm::radians(getGhostYaw())) * cos(glm::radians(getGhostPitch()));
-    forward.y = sin(glm::radians(getGhostPitch()));
-    forward.z = sin(glm::radians(getGhostYaw())) * cos(glm::radians(getGhostPitch()));
-    forward = glm::normalize(forward);
-    return forward;
+Transform Camera::getCamTransform() const {
+  return cam;
 }

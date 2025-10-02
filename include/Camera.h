@@ -1,14 +1,11 @@
 #pragma once
+#include "Transform.h"
+#include "ImagePlane.h"
 #include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
 class Camera {
 public:
-    struct Transform {
-        glm::vec3 pos{0.0f, 0.0f, 0.0f};
-        float yaw{0.0f};
-        float pitch{0.0f};
-    };
-
     struct MovementSettings {
         float rotationSpeed{5.0f};
         float moveSpeed{0.5f};
@@ -22,7 +19,7 @@ public:
 
 private:
     Transform cam;
-    Transform ghostQuad;
+    ImagePlane ghostQuad;
     Transform savedCam;
 
     MovementSettings movement;
@@ -43,16 +40,15 @@ public:
     float getCamYaw() const;
     float getCamPitch() const;
     
-    glm::vec3 getCamForward();
-    glm::vec3 getGhostForward();
+    Transform getCamTransform() const;
 
     glm::vec3 getGhostPos() const;
     float getGhostYaw() const;
     float getGhostPitch() const;
 
     bool getGhostMode() const;
+    const ImagePlane getImagePlane() const;
 
-    // Ghost mode toggle
     void toggleGhostMode();
 
     // Setters

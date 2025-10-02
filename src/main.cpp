@@ -225,39 +225,10 @@ int main() {
   glEnable(GL_BLEND);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-  // --- SETUP RAYS ---
+  // --- RAY SETUP ---
   std::vector<Ray*> rays;
-  for (int i=0; i<=20; i++) {
-    Ray* ray = new Ray(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(1.0f, 0.1f*i, 1.0f));
-    rays.push_back(ray);
-  }
-
-  // Setup VBO/VAO for each ray
   std::vector<VBO*> rayVBOs;
   std::vector<VAO*> rayVAOs;
-
-  float rayLength = 10.0f;
-
-  for (Ray* ray : rays) {
-      glm::vec3 p0 = ray->origin;
-      glm::vec3 p1 = ray->at(rayLength);
-
-      std::vector<float> vertices = {
-          p0.x, p0.y, p0.z,
-          p1.x, p1.y, p1.z
-      };
-
-      VBO* rayVBO = new VBO(&vertices);
-      VAO* rayVAO = new VAO();
-
-      rayVAO->bind();
-      rayVBO->bind();
-      rayVAO->setAttribPointer(0, 3, GL_FLOAT, false, 3 * sizeof(float), (void*)0);
-      glEnableVertexAttribArray(0);
-
-      rayVBOs.push_back(rayVBO);
-      rayVAOs.push_back(rayVAO);
-  }
 
   // --- SETUP WORLD OBJECTS ---
   std::vector<Shape*> worldObjects;
@@ -322,18 +293,11 @@ int main() {
     glm::mat4 model = glm::mat4(1.0f);
 
     // Calculate camera forward, right, up vectors
-    glm::vec3 forward;
-    forward.x = cos(glm::radians(cam.getCamYaw())) * cos(glm::radians(cam.getCamPitch()));
-    forward.y = sin(glm::radians(cam.getCamPitch()));
-    forward.z = sin(glm::radians(cam.getCamYaw())) * cos(glm::radians(cam.getCamPitch()));
-    forward = glm::normalize(forward);
+    glm::vec3 forward = cam.getCamTransform().forward();
+    glm::vec3 right = cam.getCamTransform().right();
+    glm::vec3 up = cam.getCamTransform().up();
 
-    glm::vec3 worldUp = glm::vec3(0.0f, 1.0f, 0.0f);
-    glm::vec3 right = glm::normalize(glm::cross(forward, worldUp));
-    glm::vec3 up = glm::normalize(glm::cross(right, forward));
-
-    // View matrix
-    glm::mat4 view = glm::lookAt(cam.getCamPos(), cam.getCamPos() + forward, up);
+    glm::mat4 view = cam.getCamTransform().viewMatrix();
 
     // Projection matrix
     glm::mat4 projection = glm::perspective(glm::radians(cam.getFov()), 800.0f / 600.0f, cam.getNearPlane(), cam.getFarPlane());
@@ -347,6 +311,48 @@ int main() {
     ImGui::Button("Stop");
     ImGui::Button("Reset");
     ImGui::SliderInt("Thread Count", &threadCount, 1, 16);
+    if (ImGui::Button("Render")) {
+
+    // Create rays
+    const ImagePlane& plane = cam.getImagePlane();
+    glm::vec3 quadTopLeft = plane.topLeft();
+    float quadWorldWidth = plane.worldSpaceWidth();
+
+    float pixelWidth = quadWorldWidth / 800.0f;
+    float pixelWidthRemainder = std::fmod(quadWorldWidth, 800.0f);
+
+    for (int i = 0; i <= 800; i++) {
+        glm::vec3 originToPixel = quadTopLeft + plane.transform.right() * (pixelWidth * i + pixelWidthRemainder / 2.0f);
+
+        glm::vec3 origin = cam.getCamPos();
+        glm::vec3 direction = glm::normalize(originToPixel - origin);
+
+        Ray* ray = new Ray(origin, direction);
+        rays.push_back(ray);
+    }
+
+    float rayLength = 10.0f;
+      for (Ray* ray : rays) {
+          glm::vec3 p0 = ray->origin;
+          glm::vec3 p1 = ray->at(rayLength);
+
+          std::vector<float> vertices = {
+              p0.x, p0.y, p0.z,
+              p1.x, p1.y, p1.z
+          };
+
+          VBO* rayVBO = new VBO(&vertices);
+          VAO* rayVAO = new VAO();
+
+          rayVAO->bind();
+          rayVBO->bind();
+          rayVAO->setAttribPointer(0, 3, GL_FLOAT, false, 3 * sizeof(float), (void*)0);
+          glEnableVertexAttribArray(0);
+
+          rayVBOs.push_back(rayVBO);
+          rayVAOs.push_back(rayVAO);
+      }
+    }
     ImGui::End();
 
     ImGui::Begin("Camera");
@@ -364,7 +370,7 @@ int main() {
 
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     if (cam.getGhostMode()) {
-      glm::vec3 ghostForward = cam.getGhostForward();
+      glm::vec3 ghostForward = cam.getImagePlane().transform.forward();
 
       glm::vec3 worldUp = glm::vec3(0.0f, 1.0f, 0.0f);
       glm::vec3 ghostRight = glm::normalize(glm::cross(ghostForward, worldUp));

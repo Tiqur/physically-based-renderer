@@ -70,6 +70,8 @@ set(SOURCES
     src/Camera.cpp
     src/Shape.cpp
     src/Ray.cpp
+    src/ImagePlane.cpp
+    src/Transform.cpp
     src/objects/Triangle.cpp
     src/objects/Square.cpp
     src/objects/Cube.cpp
