@@ -69,6 +69,7 @@ set(SOURCES
     src/VAO.cpp
     src/Camera.cpp
     src/Shape.cpp
+    src/Ray.cpp
     src/objects/Triangle.cpp
     src/objects/Square.cpp
     src/objects/Cube.cpp

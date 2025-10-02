@@ -7,6 +7,7 @@
 #include "Triangle.h"
 #include "Square.h"
 #include "Cube.h"
+#include "Ray.h"
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
@@ -224,6 +225,40 @@ int main() {
   glEnable(GL_BLEND);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
+  // --- SETUP RAYS ---
+  std::vector<Ray*> rays;
+  for (int i=0; i<=20; i++) {
+    Ray* ray = new Ray(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(1.0f, 0.1f*i, 1.0f));
+    rays.push_back(ray);
+  }
+
+  // Setup VBO/VAO for each ray
+  std::vector<VBO*> rayVBOs;
+  std::vector<VAO*> rayVAOs;
+
+  float rayLength = 10.0f;
+
+  for (Ray* ray : rays) {
+      glm::vec3 p0 = ray->origin;
+      glm::vec3 p1 = ray->at(rayLength);
+
+      std::vector<float> vertices = {
+          p0.x, p0.y, p0.z,
+          p1.x, p1.y, p1.z
+      };
+
+      VBO* rayVBO = new VBO(&vertices);
+      VAO* rayVAO = new VAO();
+
+      rayVAO->bind();
+      rayVBO->bind();
+      rayVAO->setAttribPointer(0, 3, GL_FLOAT, false, 3 * sizeof(float), (void*)0);
+      glEnableVertexAttribArray(0);
+
+      rayVBOs.push_back(rayVBO);
+      rayVAOs.push_back(rayVAO);
+  }
+
   // --- SETUP WORLD OBJECTS ---
   std::vector<Shape*> worldObjects;
   
@@ -354,6 +389,16 @@ int main() {
     // Restore perspective projection and view matrix for world objects
     glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
     glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+
+    // Draw all rays
+    for (size_t i = 0; i < rays.size(); i++) {
+        glm::mat4 identity = glm::mat4(1.0f);
+        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(identity));
+        glUniform4f(colorLoc, 1.0f, 0.0f, 0.0f, 1.0f);
+
+        rayVAOs[i]->bind();
+        glDrawArrays(GL_LINES, 0, 2);
+    }
     
     // Draw all world objects
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -380,6 +425,9 @@ int main() {
   // Clean up and exit
   for (Shape* shape : worldObjects) {
     delete shape;
+  }
+  for (Ray* ray : rays) {
+    delete ray;
   }
   for (VBO* vbo : shapeVBOs) {
     delete vbo;
