@@ -39,6 +39,8 @@ public:
     glm::vec3 getCamPos() const;
     float getCamYaw() const;
     float getCamPitch() const;
+    void updateImagePlane(float width, float height);
+    void setGhostQuadTransform(const Transform& newTransform);
     
     Transform getCamTransform() const;
 

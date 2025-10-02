@@ -46,6 +46,11 @@ bool Camera::getGhostMode() const {
     return ghostMode;
 }
 
+void Camera::updateImagePlane(float width, float height) {
+    ghostQuad.width = width;
+    ghostQuad.height = height;
+}
+
 const ImagePlane Camera::getImagePlane() const {
     return ghostQuad;
 }
@@ -60,9 +65,13 @@ void Camera::setMoveSpeed(float newSpeed) {
     movement.moveSpeed = newSpeed;
 }
 
+void Camera::setGhostQuadTransform(const Transform& newTransform) {
+    ghostQuad.transform = newTransform;
+}
+
 void Camera::toggleGhostMode() {
     if (!ghostMode) {
-        ghostQuad.transform = cam;
+        setGhostQuadTransform(cam);
         savedCam = cam;
 
         glm::vec3 forward = cam.forward();
@@ -76,6 +85,9 @@ void Camera::toggleGhostMode() {
 
 void Camera::setCamPos(glm::vec3 newPos) {
     cam.position = newPos;
+    if (!ghostMode) {
+      setGhostQuadTransform(cam);
+    }
 }
 
 void Camera::setCamYaw(float newYaw) {

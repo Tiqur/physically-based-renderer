@@ -43,15 +43,14 @@ std::string fragmentShaderSource = R"(
   )";
 
 std::vector<float> vertices = {
-    -1.0f, -1.0f, 0.0f, // ***
-    -1.0f, 1.0f,  0.0f, // **
-    1.0f,  1.0f,  0.0f, // *
+    -0.5f, -0.5f, 0.0f, 
+    -0.5f,  0.5f, 0.0f, 
+     0.5f,  0.5f, 0.0f, 
 
-    -1.0f, -1.0f, 0.0f, //   *
-    1.0f,  1.0f,  0.0f, //  **
-    1.0f,  -1.0f, 0.0f, // ***
+    -0.5f, -0.5f, 0.0f, 
+     0.5f,  0.5f, 0.0f, 
+     0.5f, -0.5f, 0.0f, 
 };
-
 Camera cam = Camera(); 
 
 // Mouse state
@@ -313,28 +312,53 @@ int main() {
     ImGui::SliderInt("Thread Count", &threadCount, 1, 16);
     if (ImGui::Button("Render")) {
 
+    // Clean up old Rays if any
+    for (Ray* ray : rays) { delete ray; }
+    for (VBO* vbo : rayVBOs) { delete vbo; }
+    for (VAO* vao : rayVAOs) { delete vao; }
+    rays.clear();
+    rayVBOs.clear();
+    rayVAOs.clear();
+
+
+    float aspectRatio = 800.0f / 600.0f;
+    float planeDist = 1.0f;
+    float planeHeight = 2.0f * planeDist * tan(glm::radians(cam.getFov() / 2.0f));
+    float planeWidth = planeHeight * aspectRatio;
+    cam.updateImagePlane(planeWidth, planeHeight);
+
     // Create rays
     const ImagePlane& plane = cam.getImagePlane();
     glm::vec3 quadTopLeft = plane.topLeft();
+
     float quadWorldWidth = plane.worldSpaceWidth();
-
     float pixelWidth = quadWorldWidth / 800.0f;
-    float pixelWidthRemainder = std::fmod(quadWorldWidth, 800.0f);
 
-    for (int i = 0; i <= 800; i++) {
-        glm::vec3 originToPixel = quadTopLeft + plane.transform.right() * (pixelWidth * i + pixelWidthRemainder / 2.0f);
 
-        glm::vec3 origin = cam.getCamPos();
-        glm::vec3 direction = glm::normalize(originToPixel - origin);
+
+    for (int x = 0; x <= 800; x++) {
+      glm::vec3 offsetRight = plane.transform.right() * (pixelWidth * x);
+      if (x % 20 != 0) continue;
+
+      for (int y = 0; y <= 600; y++) {
+        if (y % 20 != 0) continue;
+        glm::vec3 offsetDown = plane.transform.up() * (pixelWidth * y);
+
+        glm::vec3 posOnImagePlane = quadTopLeft + offsetRight - offsetDown;
+
+        // Get position of ImagePlane and subtract some distance along -normal
+        glm::vec3 origin = plane.transform.position - plane.transform.forward()*planeDist;
+        glm::vec3 direction = glm::normalize(posOnImagePlane - origin);
 
         Ray* ray = new Ray(origin, direction);
         rays.push_back(ray);
+      }
     }
 
-    float rayLength = 10.0f;
+      float rayLength = 10.0f;
       for (Ray* ray : rays) {
           glm::vec3 p0 = ray->origin;
-          glm::vec3 p1 = ray->at(rayLength);
+          glm::vec3 p1 = ray->origin + ray->direction*rayLength;
 
           std::vector<float> vertices = {
               p0.x, p0.y, p0.z,
@@ -370,14 +394,8 @@ int main() {
 
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     if (cam.getGhostMode()) {
-      glm::vec3 ghostForward = cam.getImagePlane().transform.forward();
-
-      glm::vec3 worldUp = glm::vec3(0.0f, 1.0f, 0.0f);
-      glm::vec3 ghostRight = glm::normalize(glm::cross(ghostForward, worldUp));
-      glm::vec3 ghostUp = glm::normalize(glm::cross(ghostRight, ghostForward));
-
-      glm::mat4 ghostViewMatrix = glm::lookAt(cam.getGhostPos(), cam.getGhostPos() + ghostForward, ghostUp);
-      glm::mat4 quadModel = glm::inverse(ghostViewMatrix);
+      const ImagePlane& plane = cam.getImagePlane();
+      glm::mat4 quadModel = plane.modelMatrix(); 
  
       glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(quadModel));
       glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
@@ -400,7 +418,7 @@ int main() {
     for (size_t i = 0; i < rays.size(); i++) {
         glm::mat4 identity = glm::mat4(1.0f);
         glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(identity));
-        glUniform4f(colorLoc, 1.0f, 0.0f, 0.0f, 1.0f);
+        glUniform4f(colorLoc, 1.0f, 1.0f, 1.0f, 0.1f);
 
         rayVAOs[i]->bind();
         glDrawArrays(GL_LINES, 0, 2);
