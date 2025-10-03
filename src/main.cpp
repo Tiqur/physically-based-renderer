@@ -5,6 +5,7 @@
 #include "Camera.h"
 #include "Shape.h"
 #include "Triangle.h"
+#include "Sphere.h"
 #include "Square.h"
 #include "Cube.h"
 #include "Ray.h"
@@ -281,6 +282,9 @@ int main() {
   cube->position = glm::vec3(0.0f, 0.0f, -10.0f);
   worldObjects.push_back(cube);
 
+  Sphere* sphere = new Sphere(2.0f,  4, glm::vec3(0.0f, 0.0f, -15.0f));
+  worldObjects.push_back(sphere);
+
   Square* square = new Square();
   square->position = glm::vec3(0.0f, 0.0f, -5.0f);
   worldObjects.push_back(square);
@@ -395,7 +399,7 @@ int main() {
       }
     }
 
-      float rayLength = 10.0f;
+      float rayLength = 128.0f;
       for (Ray* ray : rays) {
           glm::vec3 p0 = ray->origin;
           glm::vec3 p1 = ray->origin + ray->direction*rayLength;
@@ -465,14 +469,27 @@ int main() {
     for (size_t i = 0; i < rays.size(); i++) {
         glm::mat4 identity = glm::mat4(1.0f);
         glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(identity));
-        glUniform4f(colorLoc, 1.0f, 1.0f, 1.0f, 0.1f);
 
+        bool hitAnything = false;
+        for (Shape* o : worldObjects) {
+          if (o->intersect(*rays[i])) {
+            hitAnything = true;
+            break;
+          }
+        }
+
+        if (hitAnything) {
+            glUniform4f(colorLoc, 0.0f, 1.0f, 0.0f, 0.1f); // Green
+        } else {
+            glUniform4f(colorLoc, 1.0f, 1.0f, 1.0f, 0.1f); // White
+        }
         rayVAOs[i]->bind();
         glDrawArrays(GL_LINES, 0, 2);
     }
     
     // Draw all world objects
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    //glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     for (size_t i = 0; i < worldObjects.size(); i++) {
       glm::mat4 shapeModel = worldObjects[i]->getModelMatrix();
       glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(shapeModel));

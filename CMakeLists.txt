@@ -68,11 +68,12 @@ set(SOURCES
     src/VBO.cpp
     src/VAO.cpp
     src/Camera.cpp
-    src/Shape.cpp
     src/Ray.cpp
+    src/Shape.cpp
     src/ImagePlane.cpp
     src/Transform.cpp
     src/objects/Triangle.cpp
+    src/objects/Sphere.cpp
     src/objects/Square.cpp
     src/objects/Cube.cpp
 )
