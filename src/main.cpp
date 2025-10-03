@@ -394,7 +394,8 @@ int main() {
         // Get position of ImagePlane and subtract some distance along -normal
         glm::vec3 direction = glm::normalize(posOnImagePlane - origin);
 
-        Ray* ray = new Ray(origin, direction);
+        bool renderOnPlane = true;
+        Ray* ray = new Ray(renderOnPlane ? posOnImagePlane : origin, direction);
         rays.push_back(ray);
       }
     }
