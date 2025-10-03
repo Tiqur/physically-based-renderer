@@ -46,9 +46,13 @@ bool Camera::getGhostMode() const {
     return ghostMode;
 }
 
-void Camera::updateImagePlane(float width, float height) {
-    ghostQuad.width = width;
-    ghostQuad.height = height;
+void Camera::updateImagePlane(float screenWidth, float screenHeight) {
+    float aspectRatio = screenWidth / screenHeight;
+    float planeHeight = 2.0f * projection.nearPlane * tan(glm::radians(getFov() / 2.0f));
+    float planeWidth = planeHeight * aspectRatio;
+
+    ghostQuad.width = planeWidth;
+    ghostQuad.height = planeHeight;
 }
 
 const ImagePlane Camera::getImagePlane() const {
@@ -71,14 +75,17 @@ void Camera::setGhostQuadTransform(const Transform& newTransform) {
 
 void Camera::toggleGhostMode() {
     if (!ghostMode) {
-        setGhostQuadTransform(cam);
+
         savedCam = cam;
 
-        glm::vec3 forward = cam.forward();
-        float distance = 2.0f;
-        cam.position = ghostQuad.transform.position - (forward * distance);
+        Transform ghostTransform = savedCam;
+        ghostTransform.position = savedCam.position + savedCam.forward() * projection.nearPlane;
+        setGhostQuadTransform(ghostTransform);
+
+        float pullBackDistance = 0.05f;
+        cam.position = savedCam.position - savedCam.forward() * pullBackDistance;
     } else {
-        cam = ghostQuad.transform;
+        cam = savedCam;
     }
     ghostMode = !ghostMode;
 }
@@ -100,4 +107,8 @@ void Camera::setCamPitch(float newPitch) {
 
 Transform Camera::getCamTransform() const {
   return cam;
+}
+
+Transform Camera::getSavedCamTransform() const {
+  return savedCam;
 }

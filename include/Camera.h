@@ -43,6 +43,7 @@ public:
     void setGhostQuadTransform(const Transform& newTransform);
     
     Transform getCamTransform() const;
+    Transform getSavedCamTransform() const;
 
     glm::vec3 getGhostPos() const;
     float getGhostYaw() const;

@@ -18,8 +18,48 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <iostream>
 #include <vector>
+#include <thread>
 
 using std::cout, std::endl;
+
+static int screenWidth = 800;
+static int screenHeight = 600;
+
+// --- RAY SETUP ---
+std::vector<Ray*> rays;
+std::vector<VBO*> rayVBOs;
+std::vector<VAO*> rayVAOs;
+
+// --- SETUP WORLD OBJECTS ---
+std::vector<Shape*> worldObjects;
+  
+
+enum DebugMode {
+  None,
+  Ghost,
+  SingleRay
+};
+
+enum RenderMode {
+  Normal,
+  MultiThreaded,
+  SIMD,
+  GPU
+};
+
+//void thread_test() {
+//  cout << "hello" << endl;
+//}
+
+//class VisualRay : Ray {
+//  public:
+//    long maxTimeAlive = 5000;
+//    long timeAlive = 0;
+//
+//    float calculateOpacity(float opacity) {
+//      return opacity * ((float)maxTimeAlive / (float)timeAlive)
+//    }
+//}
 
 std::string vertexShaderSource = R"(
     #version 330 core
@@ -63,9 +103,21 @@ static float mouseSensitivity = 0.1f;
 static float deltaTime = 0.0f;
 static float lastFrame = 0.0f;
 
+
+void clean_up_rays() {
+  for (Ray* ray : rays) { delete ray; }
+  for (VBO* vbo : rayVBOs) { delete vbo; }
+  for (VAO* vao : rayVAOs) { delete vao; }
+  rays.clear();
+  rayVBOs.clear();
+  rayVAOs.clear();
+}
+
 void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
   (void)window;
   glViewport(0, 0, width, height);
+  screenWidth = width;
+  screenHeight = width;
 }
 
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {
@@ -162,6 +214,7 @@ static int threadCount = 1;
 
 
 int main() {
+
   // Initialize ImGui
   std::cout << "Initializing ImGui..." << std::endl;
   IMGUI_CHECKVERSION();
@@ -224,15 +277,6 @@ int main() {
   glEnable(GL_BLEND);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-  // --- RAY SETUP ---
-  std::vector<Ray*> rays;
-  std::vector<VBO*> rayVBOs;
-  std::vector<VAO*> rayVAOs;
-
-  // --- SETUP WORLD OBJECTS ---
-  std::vector<Shape*> worldObjects;
-  
-
   Cube* cube = new Cube();
   cube->position = glm::vec3(0.0f, 0.0f, -10.0f);
   worldObjects.push_back(cube);
@@ -263,6 +307,11 @@ int main() {
     shapeVBOs.push_back(shapeVBO);
     shapeVAOs.push_back(shapeVAO);
   }
+
+
+  // Initialize rendering threads
+  //std::thread t1(thread_test);
+  //t1.join();
 
   // Main render loop
   while (!glfwWindowShouldClose(window)) {
@@ -299,7 +348,7 @@ int main() {
     glm::mat4 view = cam.getCamTransform().viewMatrix();
 
     // Projection matrix
-    glm::mat4 projection = glm::perspective(glm::radians(cam.getFov()), 800.0f / 600.0f, cam.getNearPlane(), cam.getFarPlane());
+    glm::mat4 projection = glm::perspective(glm::radians(cam.getFov()), (float)screenWidth / (float)screenHeight, cam.getNearPlane(), cam.getFarPlane());
 
     glBindVertexArray(vao.id());
 
@@ -308,46 +357,37 @@ int main() {
     ImGui::Button("Load/Select Scene");
     ImGui::Button("Start");
     ImGui::Button("Stop");
-    ImGui::Button("Reset");
+    if (ImGui::Button("Reset")) {
+      clean_up_rays();
+    }
     ImGui::SliderInt("Thread Count", &threadCount, 1, 16);
     if (ImGui::Button("Render")) {
 
-    // Clean up old Rays if any
-    for (Ray* ray : rays) { delete ray; }
-    for (VBO* vbo : rayVBOs) { delete vbo; }
-    for (VAO* vao : rayVAOs) { delete vao; }
-    rays.clear();
-    rayVBOs.clear();
-    rayVAOs.clear();
+    clean_up_rays();
 
+    // Create Rays
+    Transform savedCamTransform = cam.getSavedCamTransform();
+    glm::vec3 origin = savedCamTransform.position;
 
-    float aspectRatio = 800.0f / 600.0f;
-    float planeDist = 1.0f;
-    float planeHeight = 2.0f * planeDist * tan(glm::radians(cam.getFov() / 2.0f));
-    float planeWidth = planeHeight * aspectRatio;
-    cam.updateImagePlane(planeWidth, planeHeight);
-
-    // Create rays
     const ImagePlane& plane = cam.getImagePlane();
     glm::vec3 quadTopLeft = plane.topLeft();
 
     float quadWorldWidth = plane.worldSpaceWidth();
-    float pixelWidth = quadWorldWidth / 800.0f;
+    float pixelWidth = quadWorldWidth / (float)screenWidth;
 
 
 
-    for (int x = 0; x <= 800; x++) {
+    for (int x = 0; x <= screenWidth; x++) {
       glm::vec3 offsetRight = plane.transform.right() * (pixelWidth * x);
-      if (x % 20 != 0) continue;
+      if (x % 50 != 0) continue;
 
-      for (int y = 0; y <= 600; y++) {
-        if (y % 20 != 0) continue;
+      for (int y = 0; y <= screenHeight; y++) {
+        if (y % 50 != 0) continue;
         glm::vec3 offsetDown = plane.transform.up() * (pixelWidth * y);
 
         glm::vec3 posOnImagePlane = quadTopLeft + offsetRight - offsetDown;
 
         // Get position of ImagePlane and subtract some distance along -normal
-        glm::vec3 origin = plane.transform.position - plane.transform.forward()*planeDist;
         glm::vec3 direction = glm::normalize(posOnImagePlane - origin);
 
         Ray* ray = new Ray(origin, direction);
@@ -384,6 +424,7 @@ int main() {
     // Ghost mode toggle
     if (ImGui::Button(cam.getGhostMode() ? "Disable Ghost" : "Enable Ghost")) {
       cam.toggleGhostMode();
+      clean_up_rays();
     }
     
     ImGui::End();
@@ -394,21 +435,27 @@ int main() {
 
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     if (cam.getGhostMode()) {
+
+      // Update aspect ratio and dimensions before rendering
+      cam.updateImagePlane((float)screenWidth, (float)screenHeight);
+
       const ImagePlane& plane = cam.getImagePlane();
       glm::mat4 quadModel = plane.modelMatrix(); 
  
       glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(quadModel));
       glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
       glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+      glUniform4f(colorLoc, 0.0f, 1.0f, 1.0f, 0.3f);
+      glDrawArrays(GL_TRIANGLES, 0, 6);
     } else {
       glm::mat4 orthoProjection = glm::ortho(-1.0f, 1.0f, -1.0f, 1.0f, 0.1f, 10.0f);
-      glm::mat4 hudView = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -1.0f));
+      glm::mat4 hudView = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 0.0f));
       
       glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(orthoProjection));
       glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(hudView));
+      glUniform4f(colorLoc, 0.0f, 1.0f, 1.0f, 0.0f);
+      glDrawArrays(GL_TRIANGLES, 0, 6);
     }
-    glUniform4f(colorLoc, 0.0f, 1.0f, 1.0f, 0.3f);
-    glDrawArrays(GL_TRIANGLES, 0, 6);
 
     // Restore perspective projection and view matrix for world objects
     glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
@@ -450,9 +497,7 @@ int main() {
   for (Shape* shape : worldObjects) {
     delete shape;
   }
-  for (Ray* ray : rays) {
-    delete ray;
-  }
+  clean_up_rays();
   for (VBO* vbo : shapeVBOs) {
     delete vbo;
   }
