@@ -383,10 +383,10 @@ int main() {
 
     for (int x = 0; x <= screenWidth; x++) {
       glm::vec3 offsetRight = plane.transform.right() * (pixelWidth * x);
-      if (x % 50 != 0) continue;
+      if (x % 10 != 0) continue;
 
       for (int y = 0; y <= screenHeight; y++) {
-        if (y % 50 != 0) continue;
+        if (y % 10 != 0) continue;
         glm::vec3 offsetDown = plane.transform.up() * (pixelWidth * y);
 
         glm::vec3 posOnImagePlane = quadTopLeft + offsetRight - offsetDown;
@@ -435,32 +435,7 @@ int main() {
     ImGui::End();
 
     glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
-    glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
-    glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
 
-    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-    if (cam.getGhostMode()) {
-
-      // Update aspect ratio and dimensions before rendering
-      cam.updateImagePlane((float)screenWidth, (float)screenHeight);
-
-      const ImagePlane& plane = cam.getImagePlane();
-      glm::mat4 quadModel = plane.modelMatrix(); 
- 
-      glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(quadModel));
-      glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
-      glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
-      glUniform4f(colorLoc, 0.0f, 1.0f, 1.0f, 0.3f);
-      glDrawArrays(GL_TRIANGLES, 0, 6);
-    } else {
-      glm::mat4 orthoProjection = glm::ortho(-1.0f, 1.0f, -1.0f, 1.0f, 0.1f, 10.0f);
-      glm::mat4 hudView = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 0.0f));
-      
-      glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(orthoProjection));
-      glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(hudView));
-      glUniform4f(colorLoc, 0.0f, 1.0f, 1.0f, 0.0f);
-      glDrawArrays(GL_TRIANGLES, 0, 6);
-    }
 
     // Restore perspective projection and view matrix for world objects
     glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
@@ -480,9 +455,9 @@ int main() {
         }
 
         if (hitAnything) {
-            glUniform4f(colorLoc, 0.0f, 1.0f, 0.0f, 0.1f); // Green
+            glUniform4f(colorLoc, 0.0f, 1.0f, 0.0f, 0.05f); // Green
         } else {
-            glUniform4f(colorLoc, 1.0f, 1.0f, 1.0f, 0.1f); // White
+            glUniform4f(colorLoc, 1.0f, 1.0f, 1.0f, 0.02f); // White
         }
         rayVAOs[i]->bind();
         glDrawArrays(GL_LINES, 0, 2);
@@ -497,6 +472,32 @@ int main() {
       glUniform4f(colorLoc, 1.0f, 1.0f, 1.0f, 1.0f);
       glBindVertexArray(shapeVAOs[i]->id());
       glDrawArrays(GL_TRIANGLES, 0, worldObjects[i]->getVertices().size() / 3);
+    }
+
+
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    glBindVertexArray(vao.id());
+    if (cam.getGhostMode()) {
+
+      // Update aspect ratio and dimensions before rendering
+      cam.updateImagePlane((float)screenWidth, (float)screenHeight);
+
+      const ImagePlane& plane = cam.getImagePlane();
+      glm::mat4 quadModel = plane.modelMatrix(); 
+ 
+      glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(quadModel));
+      glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
+      glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+      glUniform4f(colorLoc, 0.0f, 1.0f, 1.0f, 1.0f);
+      glDrawArrays(GL_TRIANGLES, 0, 6);
+    } else {
+      glm::mat4 orthoProjection = glm::ortho(-1.0f, 1.0f, -1.0f, 1.0f, 0.1f, 10.0f);
+      glm::mat4 hudView = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 0.0f));
+      
+      glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(orthoProjection));
+      glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(hudView));
+      glUniform4f(colorLoc, 0.0f, 1.0f, 1.0f, 1.0f);
+      glDrawArrays(GL_TRIANGLES, 0, 6);
     }
 
     // Render ImGui
