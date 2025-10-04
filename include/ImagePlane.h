@@ -5,10 +5,16 @@
 #include <glm/gtc/matrix_transform.hpp>
 
 class ImagePlane {
-  public:
-	Transform transform;
+  private:
 	float width = 1.0f;
 	float height = 1.0f;
+
+  public:
+	Transform transform;
+	float getWidth() const { return width; }
+	float getHeight() const { return height; }
+	void setWidth(float w) { width = w; }
+	void setHeight(float h) { height = h; }
 
 	glm::mat4 modelMatrix() const;
 

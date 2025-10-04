@@ -381,7 +381,13 @@ void Renderer::generateRays(std::vector<Ray*>& rays) {
 			glm::vec3 posOnImagePlane = quadTopLeft + offsetRight - offsetDown;
 
 			// Normalize each vector to get a field of unit vectors (each representing cast direction)
-			glm::vec3 direction = glm::normalize(posOnImagePlane - origin);
+			glm::vec3 direction;
+			bool orthographic = false;
+			if (orthographic) {
+				direction = savedCamTransform.forward();
+			} else {
+				direction = glm::normalize(posOnImagePlane - origin);
+			}
 
 			// Max dir can go in any direction for Monte Carlo based anti aliasing:
 			// let dirToCenterOfPixel = <a, b, c>

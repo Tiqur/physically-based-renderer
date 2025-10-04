@@ -1,7 +1,7 @@
 #include "ImagePlane.h"
 
 glm::mat4 ImagePlane::modelMatrix() const {
-	return glm::scale(transform.modelMatrix(), glm::vec3(width, height, 1.0f));
+	return glm::scale(transform.modelMatrix(), glm::vec3(width / 2.0f, height / 2.0f, 1.0f));
 }
 
 glm::vec3 ImagePlane::topLeft() const {

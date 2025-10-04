@@ -51,8 +51,8 @@ void Camera::updateImagePlane(float screenWidth, float screenHeight) {
 	float planeHeight = 2.0f * projection.nearPlane * tan(glm::radians(getFov() / 2.0f));
 	float planeWidth = planeHeight * aspectRatio;
 
-	ghostQuad.width = planeWidth;
-	ghostQuad.height = planeHeight;
+	ghostQuad.setWidth(planeWidth);
+	ghostQuad.setHeight(planeHeight);
 }
 
 const ImagePlane Camera::getImagePlane() const {
