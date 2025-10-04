@@ -56,6 +56,9 @@ void setupScene() {
 }
 
 void renderUI(Renderer& renderer) {
+  // For Debugging
+	ImGui::ShowMetricsWindow();
+
 	ImGui::Begin("Scene Settings");
 
 	ImGui::Button("Load/Select Scene");
