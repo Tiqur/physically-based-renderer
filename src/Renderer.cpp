@@ -134,24 +134,45 @@ void Renderer::initializeImagePlaneTexture() {
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, screenWidth, screenHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+	std::vector<uint32_t> initData(screenWidth * screenHeight, 0x22FFFFFF);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, screenWidth, screenHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, initData.data());
+}
 
-	// Testing:
-	srand(static_cast<unsigned>(time(nullptr)));
-	std::vector<unsigned char> pixels(screenWidth * screenHeight * 4);
-	for (int y = 0; y < screenHeight; ++y) {
-		for (int x = 0; x < screenWidth; ++x) {
-			int i = (y * screenWidth + x) * 4;
-			pixels[i + 0] = rand() % 256; // R
-			pixels[i + 1] = rand() % 256; // G
-			pixels[i + 2] = rand() % 256; // B
-			pixels[i + 3] = 64;           // A
+void Renderer::castRays(std::vector<Ray*>& rays, std::vector<Shape*>& worldObjects) {
+	std::vector<PixelRGB> pixels(screenWidth * screenHeight);
+
+	// Initialize all pixels to background color
+	for (int i = 0; i < screenWidth * screenHeight; i++) {
+		pixels[i] = PixelRGB(glm::vec3(0.0f, 0.0f, 0.0f));
+	}
+
+	// Check for intersections
+	size_t rayIndex = 0;
+	for (int x = 0; x < screenWidth; x++) {
+		for (int y = 0; y < screenHeight; y++) {
+
+			if (rayIndex >= rays.size())
+				break;
+
+			bool hitAnything = false;
+			for (Shape* obj : worldObjects) {
+				if (obj->intersect(*rays[rayIndex])) {
+					hitAnything = true;
+					break;
+				}
+			}
+
+			glm::vec4 color = hitAnything ? glm::vec4(0.0f, 1.0f, 0.0f, 1.0f) : glm::vec4(0.2f, 0.2f, 0.2f, 1.0f);
+
+			// Convert 2D coordinates to 1D index
+			int pixelIndex = y * screenWidth + x;
+			pixels[pixelIndex] = PixelRGB(color);
+
+			rayIndex++;
 		}
 	}
 
-	// Update texture
-	glBindTexture(GL_TEXTURE_2D, imagePlaneTexture);
-	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, screenWidth, screenHeight, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data());
+	updateTexture(pixels);
 }
 
 void Renderer::initializeShaders() {
@@ -252,7 +273,7 @@ void Renderer::setupRasterUniforms(const glm::mat4& model, const glm::mat4& view
 	glUniform4f(colorLoc, color.r, color.g, color.b, color.a);
 }
 
-void Renderer::renderRays(const std::vector<Ray*>& rays, const std::vector<Shape*>& worldObjects) {
+void Renderer::renderRays(const std::vector<Ray*>& rays, const std::vector<Shape*>& worldObjects, int rayStep) {
 	if (rays.empty() || rayVAOs.empty())
 		return;
 
@@ -267,6 +288,9 @@ void Renderer::renderRays(const std::vector<Ray*>& rays, const std::vector<Shape
 	glm::mat4 identity = glm::mat4(1.0f);
 
 	for (size_t i = 0; i < rays.size(); i++) {
+		if (i % rayStep != 0) // Skip some rays for performance
+			continue;
+
 		bool hitAnything = false;
 		for (Shape* obj : worldObjects) {
 			if (obj->intersect(*rays[i])) {
@@ -366,15 +390,11 @@ void Renderer::generateRays(std::vector<Ray*>& rays) {
 
 	// Iterate for each pixel in image
 	for (int x = 0; x <= screenWidth; x++) {
-		if (x % 10 != 0)
-			continue;
 
 		// Pixel offset right
 		glm::vec3 offsetRight = plane.transform.right() * (pixelWidth * x);
 
 		for (int y = 0; y <= screenHeight; y++) {
-			if (y % 10 != 0)
-				continue;
 
 			// Pixel offset down
 			glm::vec3 offsetDown = plane.transform.up() * (pixelWidth * y);
@@ -469,9 +489,17 @@ void Renderer::cleanupShapes() {
 	shapeVAOs.clear();
 }
 
-void Renderer::updateTexture(const std::vector<unsigned char>& pixels) {
-	glBindTexture(GL_TEXTURE_2D, textureID);
-	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, screenWidth, screenHeight, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data());
+void Renderer::updateTexture(const std::vector<PixelRGB>& pixels) {
+	std::vector<uint32_t> uint_rgb_data;
+	uint_rgb_data.reserve(pixels.size());
+
+	for (auto& p : pixels) {
+		uint_rgb_data.push_back(p.toInt());
+	}
+
+	glBindTexture(GL_TEXTURE_2D, imagePlaneTexture);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, screenWidth, screenHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, uint_rgb_data.data());
+	glBindTexture(GL_TEXTURE_2D, 0);
 }
 
 void Renderer::setDimensions(int width, int height) {

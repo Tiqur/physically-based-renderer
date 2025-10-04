@@ -18,6 +18,9 @@ std::vector<Shape*> worldObjects;
 // Renderer settings
 static int threadCount = 1;
 
+// For performance/debugging
+static int rayStep = 50;
+
 // Delta time
 static float deltaTime = 0.0f;
 static float lastFrame = 0.0f;
@@ -71,6 +74,7 @@ void renderUI(Renderer& renderer) {
 	}
 
 	ImGui::SliderInt("Thread Count", &threadCount, 1, 16);
+	ImGui::SliderInt("RayStep", &rayStep, 20, 500);
 
 	if (ImGui::Button("Render")) {
 		cleanupRays();
@@ -78,6 +82,7 @@ void renderUI(Renderer& renderer) {
 
 		renderer.generateRays(rays);
 		renderer.setupRayBuffers(rays);
+		renderer.castRays(rays, worldObjects);
 	}
 
 	ImGui::End();
@@ -137,7 +142,7 @@ int main() {
 		renderer.beginFrame();
 
 		// Render scene
-		renderer.renderRays(rays, worldObjects);
+		renderer.renderRays(rays, worldObjects, rayStep);
 		renderer.renderShapes(worldObjects);
 		renderer.renderImagePlane(renderer.getCamera().getGhostMode());
 

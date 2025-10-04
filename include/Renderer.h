@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Camera.h"
+#include "PixelRGB.h"
 #include "Ray.h"
 #include "ShaderProgram.h"
 #include "Shape.h"
@@ -23,12 +24,13 @@ class Renderer {
 	// Rendering
 	void beginFrame();
 	void endFrame();
-	void renderRays(const std::vector<Ray*>& rays, const std::vector<Shape*>& worldObjects);
+	void renderRays(const std::vector<Ray*>& rays, const std::vector<Shape*>& worldObjects, int rayStep);
 	void renderShapes(const std::vector<Shape*>& shapes);
 	void renderImagePlane(bool ghostMode);
 
 	// Rays
 	void generateRays(std::vector<Ray*>& rays);
+	void castRays(std::vector<Ray*>& rays, std::vector<Shape*>& worldObjects);
 	void setupRayBuffers(const std::vector<Ray*>& rays);
 	void cleanupRays();
 
@@ -38,7 +40,7 @@ class Renderer {
 
 	// Textures
 	GLuint imagePlaneTexture;
-	void updateTexture(const std::vector<unsigned char>& pixels);
+	void updateTexture(const std::vector<PixelRGB>& pixels);
 	void initializeImagePlaneTexture();
 
 	// Utility
