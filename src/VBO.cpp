@@ -3,14 +3,14 @@
 
 using std::cout, std::endl;
 
-VBO::VBO(const std::vector<float> *vertices) {
-    glGenBuffers(1, &m_id);
-    if (m_id == 0) {
-        cout << "Failed to generate Vertex Buffer Object" << endl;
-        return;
-    }
-    bind();
-    glBufferData(GL_ARRAY_BUFFER, vertices->size() * sizeof(float), vertices->data(), GL_STATIC_DRAW);
+VBO::VBO(const std::vector<float>* vertices) {
+	glGenBuffers(1, &m_id);
+	if (m_id == 0) {
+		cout << "Failed to generate Vertex Buffer Object" << endl;
+		return;
+	}
+	bind();
+	glBufferData(GL_ARRAY_BUFFER, vertices->size() * sizeof(float), vertices->data(), GL_STATIC_DRAW);
 }
 
 VBO::~VBO() { glDeleteBuffers(1, &m_id); }

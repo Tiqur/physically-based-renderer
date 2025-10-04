@@ -5,13 +5,13 @@
 
 class ShaderProgram {
   public:
-    ShaderProgram(Shader &&vertexShader, Shader &&fragmentShader);
-    void use();
-    ~ShaderProgram();
-    GLuint id();
+	ShaderProgram(Shader&& vertexShader, Shader&& fragmentShader);
+	void use();
+	~ShaderProgram();
+	GLuint id();
 
   private:
-    GLuint m_id{};
-    Shader m_vertexShader;
-    Shader m_fragmentShader;
+	GLuint m_id{};
+	Shader m_vertexShader;
+	Shader m_fragmentShader;
 };

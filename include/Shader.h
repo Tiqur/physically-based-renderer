@@ -5,11 +5,11 @@
 
 class Shader {
   public:
-    Shader(std::string *shaderSource, GLenum shaderType);
-    void checkErrors();
-    ~Shader();
-    GLuint id();
+	Shader(std::string* shaderSource, GLenum shaderType);
+	void checkErrors();
+	~Shader();
+	GLuint id();
 
   private:
-    GLuint m_id{};
+	GLuint m_id{};
 };
