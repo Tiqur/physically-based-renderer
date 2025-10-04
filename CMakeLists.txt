@@ -72,6 +72,7 @@ set(SOURCES
     src/Shape.cpp
     src/ImagePlane.cpp
     src/Transform.cpp
+    src/Renderer.cpp
     src/objects/Triangle.cpp
     src/objects/Sphere.cpp
     src/objects/Square.cpp
