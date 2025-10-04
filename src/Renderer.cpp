@@ -16,6 +16,7 @@ static const char* rasterVertexShaderSource = R"(
     uniform mat4 model;
     uniform mat4 view;
     uniform mat4 projection;
+
     void main() {
       gl_Position = projection * view * model * vec4(aPos, 1.0);
     }
@@ -25,6 +26,7 @@ static const char* rasterFragmentShaderSource = R"(
     #version 330 core
     out vec4 FragColor;
     uniform vec4 uColor;
+
     void main() {
       FragColor = uColor;
     }
@@ -34,10 +36,15 @@ static const char* quadVertexShaderSource = R"(
     #version 330 core
     layout (location = 0) in vec2 aPos;
     layout (location = 1) in vec2 aTexCoord;
+    uniform mat4 model;
+    uniform mat4 view;
+    uniform mat4 projection;
+
     out vec2 TexCoord;
+
     void main() {
       TexCoord = aTexCoord;
-      gl_Position = vec4(aPos, 0.0, 1.0);
+      gl_Position = projection * view * model * vec4(aPos, 0.0, 1.0);
     }
 )";
 
@@ -46,6 +53,7 @@ static const char* quadFragmentShaderSource = R"(
     in vec2 TexCoord;
     out vec4 FragColor;
     uniform sampler2D uTexture;
+
     void main() {
       FragColor = texture(uTexture, TexCoord);
     }
@@ -111,7 +119,39 @@ bool Renderer::initialize() {
 	initializeBuffers();
 	initializeTexture();
 
+	// Initialize image plane texture
+	initializeImagePlaneTexture();
+
 	return true;
+}
+
+void Renderer::initializeImagePlaneTexture() {
+	glGenTextures(1, &imagePlaneTexture);
+	glBindTexture(GL_TEXTURE_2D, imagePlaneTexture);
+
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, screenWidth, screenHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+
+	// Testing:
+	srand(static_cast<unsigned>(time(nullptr)));
+	std::vector<unsigned char> pixels(screenWidth * screenHeight * 4);
+	for (int y = 0; y < screenHeight; ++y) {
+		for (int x = 0; x < screenWidth; ++x) {
+			int i = (y * screenWidth + x) * 4;
+			pixels[i + 0] = rand() % 256; // R
+			pixels[i + 1] = rand() % 256; // G
+			pixels[i + 2] = rand() % 256; // B
+			pixels[i + 3] = 64;           // A
+		}
+	}
+
+	// Update texture
+	glBindTexture(GL_TEXTURE_2D, imagePlaneTexture);
+	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, screenWidth, screenHeight, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data());
 }
 
 void Renderer::initializeShaders() {
@@ -134,33 +174,42 @@ void Renderer::initializeShaders() {
 
 void Renderer::initializeBuffers() {
 	std::vector<float> vertices = {
-	    -0.5f,
-	    -0.5f,
+	    -1.0f,
+	    -1.0f,
 	    0.0f,
-	    -0.5f,
-	    0.5f,
+	    1.0f,
+	    1.0f,
+	    -1.0f,
+	    1.0f,
+	    1.0f,
+	    1.0f,
+	    1.0f,
+	    1.0f,
 	    0.0f,
-	    0.5f,
-	    0.5f,
+
+	    -1.0f,
+	    -1.0f,
 	    0.0f,
-	    -0.5f,
-	    -0.5f,
+	    1.0f,
+	    1.0f,
+	    1.0f,
+	    1.0f,
 	    0.0f,
-	    0.5f,
-	    0.5f,
+	    -1.0f,
+	    1.0f,
 	    0.0f,
-	    0.5f,
-	    -0.5f,
-	    0.0f,
-	};
+	    0.0f};
 
 	quadVBO = std::make_unique<VBO>(&vertices);
 	quadVAO = std::make_unique<VAO>();
 
-	quadVAO->bind();
-	quadVBO->bind();
-	quadVAO->setAttribPointer(0, 3, GL_FLOAT, false, 3 * sizeof(float), (void*)0);
+	// Position attribute (location 0)
+	quadVAO->setAttribPointer(0, 2, GL_FLOAT, false, 4 * sizeof(float), (void*)0);
 	glEnableVertexAttribArray(0);
+
+	// Texture coordinate attribute (location 1)
+	quadVAO->setAttribPointer(1, 2, GL_FLOAT, false, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+	glEnableVertexAttribArray(1);
 }
 
 void Renderer::initializeTexture() {
@@ -262,14 +311,17 @@ void Renderer::renderShapes(const std::vector<Shape*>& shapes) {
 }
 
 void Renderer::renderImagePlane(bool ghostMode) {
-	rasterProgram->use();
+	quadProgram->use();
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	quadVAO->bind();
 
-	GLuint modelLoc = glGetUniformLocation(rasterProgram->id(), "model");
-	GLuint viewLoc = glGetUniformLocation(rasterProgram->id(), "view");
-	GLuint projectionLoc = glGetUniformLocation(rasterProgram->id(), "projection");
-	GLint colorLoc = glGetUniformLocation(rasterProgram->id(), "uColor");
+	GLuint modelLoc = glGetUniformLocation(quadProgram->id(), "model");
+	GLuint viewLoc = glGetUniformLocation(quadProgram->id(), "view");
+	GLuint projectionLoc = glGetUniformLocation(quadProgram->id(), "projection");
+
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, imagePlaneTexture);
+	glUniform1i(glGetUniformLocation(quadProgram->id(), "uTexture"), 0);
 
 	if (ghostMode) {
 		cam.updateImagePlane((float)screenWidth, (float)screenHeight);
@@ -286,14 +338,15 @@ void Renderer::renderImagePlane(bool ghostMode) {
 		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
 		glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
 		glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
-		glUniform4f(colorLoc, 0.0f, 1.0f, 1.0f, 1.0f);
 	} else {
-		glm::mat4 orthoProjection = glm::ortho(-1.0f, 1.0f, -1.0f, 1.0f, 0.1f, 10.0f);
-		glm::mat4 hudView = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 0.0f));
+		// Full screen quad
+		glm::mat4 model = glm::mat4(1.0f);
+		glm::mat4 orthoProjection = glm::ortho(-1.0f, 1.0f, -1.0f, 1.0f, -1.0f, 1.0f);
+		glm::mat4 hudView = glm::mat4(1.0f);
 
+		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
 		glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(orthoProjection));
 		glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(hudView));
-		glUniform4f(colorLoc, 0.0f, 1.0f, 1.0f, 1.0f);
 	}
 
 	glDrawArrays(GL_TRIANGLES, 0, 6);
@@ -303,25 +356,40 @@ void Renderer::generateRays(std::vector<Ray*>& rays) {
 	Transform savedCamTransform = cam.getSavedCamTransform();
 	glm::vec3 origin = savedCamTransform.position;
 
+	// Offset each ray from top left point on ImagePlane for reference
 	const ImagePlane& plane = cam.getImagePlane();
 	glm::vec3 quadTopLeft = plane.topLeft();
 
+	// Offset each pixel to ensure ray is centered
 	float quadWorldWidth = plane.worldSpaceWidth();
 	float pixelWidth = quadWorldWidth / (float)screenWidth;
 
+	// Iterate for each pixel in image
 	for (int x = 0; x <= screenWidth; x++) {
 		if (x % 10 != 0)
 			continue;
 
+		// Pixel offset right
 		glm::vec3 offsetRight = plane.transform.right() * (pixelWidth * x);
 
 		for (int y = 0; y <= screenHeight; y++) {
 			if (y % 10 != 0)
 				continue;
 
+			// Pixel offset down
 			glm::vec3 offsetDown = plane.transform.up() * (pixelWidth * y);
 			glm::vec3 posOnImagePlane = quadTopLeft + offsetRight - offsetDown;
+
+			// Normalize each vector to get a field of unit vectors (each representing cast direction)
 			glm::vec3 direction = glm::normalize(posOnImagePlane - origin);
+
+			// Max dir can go in any direction for Monte Carlo based anti aliasing:
+			// let dirToCenterOfPixel = <a, b, c>
+			//
+			//   { (offset, a, b, c) ∈ ℝ⁴ |
+			//   a - (pw/2) < offset < a + (pw/2),
+			//   b - (pw/2) < offset < b + (pw/2),
+			//   c - (pw/2) < offset < c + (pw/2) }
 
 			bool renderOnPlane = true;
 			Ray* ray = new Ray(renderOnPlane ? posOnImagePlane : origin, direction);

@@ -56,7 +56,7 @@ void setupScene() {
 }
 
 void renderUI(Renderer& renderer) {
-  // For Debugging
+	// For Debugging
 	ImGui::ShowMetricsWindow();
 
 	ImGui::Begin("Scene Settings");

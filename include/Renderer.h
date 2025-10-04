@@ -37,7 +37,9 @@ class Renderer {
 	void cleanupShapes();
 
 	// Textures
+	GLuint imagePlaneTexture;
 	void updateTexture(const std::vector<unsigned char>& pixels);
+	void initializeImagePlaneTexture();
 
 	// Utility
 	GLFWwindow* getWindow() const { return window; }
