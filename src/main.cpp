@@ -145,7 +145,8 @@ int main() {
 		// Render scene
 		renderer.renderRays(rays, worldObjects, rayStep);
 		renderer.renderShapes(worldObjects);
-		renderer.renderImagePlane(renderer.getCamera().getGhostMode());
+		renderer.renderFrustrum();
+		renderer.renderImagePlane();
 
 		// Render UI
 		renderUI(renderer);

@@ -25,8 +25,9 @@ class Renderer {
 	void beginFrame();
 	void endFrame();
 	void renderRays(const std::vector<Ray*>& rays, const std::vector<Shape*>& worldObjects, int rayStep);
+	void renderFrustrum();
 	void renderShapes(const std::vector<Shape*>& shapes);
-	void renderImagePlane(bool ghostMode);
+	void renderImagePlane();
 
 	// Rays
 	void generateRays(std::vector<Ray*>& rays);

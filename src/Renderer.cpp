@@ -113,6 +113,7 @@ bool Renderer::initialize() {
 	// Setup OpenGL state
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glLineWidth(1.0f);
 
 	// Initialize shaders and buffers
 	initializeShaders();
@@ -136,6 +137,70 @@ void Renderer::initializeImagePlaneTexture() {
 
 	std::vector<uint32_t> initData(screenWidth * screenHeight, 0x22FFFFFF);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, screenWidth, screenHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, initData.data());
+}
+
+void Renderer::renderFrustrum() {
+	if (!cam.getGhostMode())
+		return;
+
+	// TODO: We shouldn't calculate all this every frame
+	Transform savedCamTransform = cam.getSavedCamTransform();
+	glm::vec3 origin = savedCamTransform.position;
+	const ImagePlane& plane = cam.getImagePlane();
+
+	// Get vertices of the ImagePlane
+	glm::vec3 nearCorners[4] = {
+	    plane.topLeft(),
+	    plane.topRight(),
+	    plane.bottomRight(),
+	    plane.bottomLeft()};
+
+	// Calculate far plane corners
+	float farPlane = cam.getFarPlane();
+	glm::vec3 farCorners[4];
+	for (int i = 0; i < 4; i++) {
+		glm::vec3 dir = glm::normalize(nearCorners[i] - origin);
+		farCorners[i] = origin + dir * farPlane;
+	}
+
+	std::vector<float> verts;
+	verts.reserve(72); // 12 lines * 2 vertices * 3 floats
+
+	auto addLine = [&](const glm::vec3& a, const glm::vec3& b) {
+		verts.insert(verts.end(), {a.x, a.y, a.z, b.x, b.y, b.z});
+	};
+
+	// Near plane rectangle
+	for (int i = 0; i < 4; i++) {
+		addLine(nearCorners[i], nearCorners[(i + 1) % 4]);
+	}
+
+	// Connecting lines
+	for (int i = 0; i < 4; i++) {
+		addLine(nearCorners[i], farCorners[i]);
+	}
+
+	// Far plane rectangle
+	for (int i = 0; i < 4; i++) {
+		addLine(farCorners[i], farCorners[(i + 1) % 4]);
+	}
+
+	VBO vbo(&verts);
+	VAO vao;
+	vao.bind();
+	vbo.bind();
+	vao.setAttribPointer(0, 3, GL_FLOAT, false, 3 * sizeof(float), (void*)0);
+	glEnableVertexAttribArray(0);
+
+	rasterProgram->use();
+	glm::mat4 view = cam.getCamTransform().viewMatrix();
+	glm::mat4 projection = glm::perspective(glm::radians(cam.getFov()),
+	    (float)screenWidth / (float)screenHeight,
+	    cam.getNearPlane(),
+	    cam.getFarPlane());
+
+	setupRasterUniforms(glm::mat4(1.0f), view, projection, glm::vec4(0.0f, 1.0f, 1.0f, 0.4f));
+	glDrawArrays(GL_LINES, 0, 24);
 }
 
 void Renderer::castRays(std::vector<Ray*>& rays, std::vector<Shape*>& worldObjects) {
@@ -334,7 +399,7 @@ void Renderer::renderShapes(const std::vector<Shape*>& shapes) {
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 }
 
-void Renderer::renderImagePlane(bool ghostMode) {
+void Renderer::renderImagePlane() {
 	quadProgram->use();
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	quadVAO->bind();
@@ -347,7 +412,7 @@ void Renderer::renderImagePlane(bool ghostMode) {
 	glBindTexture(GL_TEXTURE_2D, imagePlaneTexture);
 	glUniform1i(glGetUniformLocation(quadProgram->id(), "uTexture"), 0);
 
-	if (ghostMode) {
+	if (cam.getGhostMode()) {
 		cam.updateImagePlane((float)screenWidth, (float)screenHeight);
 
 		const ImagePlane& plane = cam.getImagePlane();
@@ -401,13 +466,7 @@ void Renderer::generateRays(std::vector<Ray*>& rays) {
 			glm::vec3 posOnImagePlane = quadTopLeft + offsetRight - offsetDown;
 
 			// Normalize each vector to get a field of unit vectors (each representing cast direction)
-			glm::vec3 direction;
-			bool orthographic = false;
-			if (orthographic) {
-				direction = savedCamTransform.forward();
-			} else {
-				direction = glm::normalize(posOnImagePlane - origin);
-			}
+			glm::vec3 direction = glm::normalize(posOnImagePlane - origin);
 
 			// Max dir can go in any direction for Monte Carlo based anti aliasing:
 			// let dirToCenterOfPixel = <a, b, c>
