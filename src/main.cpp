@@ -40,22 +40,22 @@ void cleanupScene() {
 }
 
 void setupScene() {
-	Cube* cube = new Cube();
-	cube->position = glm::vec3(0.0f, 0.0f, -10.0f);
-	worldObjects.push_back(cube);
+	// Cube* cube = new Cube();
+	// cube->position = glm::vec3(0.0f, 0.0f, -10.0f);
+	// worldObjects.push_back(cube);
 
 	Sphere* sphere = new Sphere(2.0f, 4, glm::vec3(0.0f, 0.0f, -15.0f));
 	worldObjects.push_back(sphere);
 
-	Square* square = new Square();
-	square->position = glm::vec3(0.0f, 0.0f, -5.0f);
-	worldObjects.push_back(square);
+	// Square* square = new Square();
+	// square->position = glm::vec3(0.0f, 0.0f, -5.0f);
+	// worldObjects.push_back(square);
 
-	for (int i = 0; i < 32; i++) {
-		Triangle* triangle = new Triangle();
-		triangle->position = glm::vec3(0.0f, 0.0f, (float)(-i) * 0.1);
-		worldObjects.push_back(triangle);
-	}
+	// for (int i = 0; i < 32; i++) {
+	//	Triangle* triangle = new Triangle();
+	//	triangle->position = glm::vec3(0.0f, 0.0f, (float)(-i) * 0.1);
+	//	worldObjects.push_back(triangle);
+	// }
 }
 
 void renderUI(Renderer& renderer) {
@@ -83,6 +83,7 @@ void renderUI(Renderer& renderer) {
 		renderer.generateRays(rays);
 		renderer.setupRayBuffers(rays);
 		renderer.castRays(rays, worldObjects);
+		std::cout << "Ray Count: " << rays.size() << std::endl;
 	}
 
 	ImGui::End();

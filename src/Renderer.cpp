@@ -389,12 +389,12 @@ void Renderer::generateRays(std::vector<Ray*>& rays) {
 	float pixelWidth = quadWorldWidth / (float)screenWidth;
 
 	// Iterate for each pixel in image
-	for (int x = 0; x <= screenWidth; x++) {
+	for (int x = 0; x < screenWidth; x++) {
 
 		// Pixel offset right
 		glm::vec3 offsetRight = plane.transform.right() * (pixelWidth * x);
 
-		for (int y = 0; y <= screenHeight; y++) {
+		for (int y = 0; y < screenHeight; y++) {
 
 			// Pixel offset down
 			glm::vec3 offsetDown = plane.transform.up() * (pixelWidth * y);
