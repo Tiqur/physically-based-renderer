@@ -5,9 +5,11 @@
 <img width="2535" height="1441" alt="image" src="https://github.com/user-attachments/assets/bb98adc8-c4aa-4c6d-8463-a65bb77caa61" />
 
 
-#### About: TODO: description
----
+#### About: 
+TODO: description
 
+---
+#### Math Behind the Renderer:
 Rays
 
 $$
