@@ -89,6 +89,9 @@ find_package(GLEW REQUIRED)
 # Find GLFW
 find_package(glfw3 REQUIRED)
 
+# Find Eigen
+find_package(Eigen3 3.3 REQUIRED NO_MODULE)
+
 # Find GLM
 find_package(glm REQUIRED)
 
@@ -109,6 +112,7 @@ target_link_libraries(OpenGLProject
     ${GLEW_LIBRARIES}
     glfw
     ImGui
+    Eigen3::Eigen
 )
 
 # Enable Clang-Tidy for static analysis
@@ -120,6 +124,7 @@ target_compile_options(OpenGLProject PRIVATE
     -Wextra
     -pedantic
     -Werror
+    -march=native # Generate code optimized for specific CPU 
 )
 
 # Enable clang-format on save or as part of the build process

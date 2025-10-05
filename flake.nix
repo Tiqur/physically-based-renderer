@@ -19,6 +19,7 @@
         glew
         glfw3
         glm
+        eigen
       ];
     };
   };

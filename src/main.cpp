@@ -8,6 +8,7 @@
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
+#include <Eigen/Dense>
 #include <iostream>
 #include <vector>
 
@@ -44,7 +45,7 @@ void setupScene() {
 	// cube->position = glm::vec3(0.0f, 0.0f, -10.0f);
 	// worldObjects.push_back(cube);
 
-	Sphere* sphere = new Sphere(2.0f, 4, glm::vec3(0.0f, 0.0f, -15.0f));
+	Sphere* sphere = new Sphere(1.0f, 4, glm::vec3(0.0f, 0.0f, -5.0f));
 	worldObjects.push_back(sphere);
 
 	// Square* square = new Square();
