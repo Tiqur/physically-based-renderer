@@ -7,7 +7,7 @@
 
 #### About: 
 TODO: description
-
+TODO: make GIF of render
 ---
 #### Math Behind the Renderer:
 Rays
