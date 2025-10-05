@@ -8,12 +8,13 @@
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
-#include <Eigen/Dense>
+#include <chrono>
 #include <iostream>
+#include <thread>
 #include <vector>
 
 // Scene data
-std::vector<Ray*> rays;
+std::vector<Ray> rays;
 std::vector<Shape*> worldObjects;
 
 // Renderer settings
@@ -26,10 +27,21 @@ static int rayStep = 50;
 static float deltaTime = 0.0f;
 static float lastFrame = 0.0f;
 
+// FOR DEBUGGING / BENCHMARKS
+// TODO: Move to own file/class
+void measure(const std::string& name, auto func) {
+	auto start = std::chrono::high_resolution_clock::now();
+	func();
+	auto end = std::chrono::high_resolution_clock::now();
+
+	auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+	std::cout << name << " took " << duration.count() << " ms\n";
+}
+
 void cleanupRays() {
-	for (Ray* ray : rays) {
-		delete ray;
-	}
+	// for (Ray* ray : rays) {
+	//	delete ray;
+	// }
 	rays.clear();
 }
 
@@ -78,13 +90,26 @@ void renderUI(Renderer& renderer) {
 	ImGui::SliderInt("RayStep", &rayStep, 20, 500);
 
 	if (ImGui::Button("Render")) {
-		cleanupRays();
-		renderer.cleanupRays();
 
-		renderer.generateRays(rays);
-		renderer.setupRayBuffers(rays);
-		renderer.castRays(rays, worldObjects);
-		std::cout << "Ray Count: " << rays.size() << std::endl;
+		measure("Cleanup Rays", [&] {
+			cleanupRays();
+			renderer.cleanupRays();
+		});
+
+		measure("Generate Rays", [&] {
+			renderer.generateRays(rays);
+		});
+
+		measure("Setup Buffers", [&] {
+			renderer.setupRayBuffers(rays);
+		});
+
+		measure("Cast Rays", [&] {
+			renderer.castRays(rays, worldObjects);
+		});
+
+		// std::thread t1(&Renderer::castRays, &renderer, std::ref(rays), std::ref(worldObjects));
+		// std::cout << "Ray Count: " << rays.size() << std::endl;
 	}
 
 	ImGui::End();
@@ -144,7 +169,7 @@ int main() {
 		renderer.beginFrame();
 
 		// Render scene
-		renderer.renderRays(rays, worldObjects, rayStep);
+		// renderer.renderRays(rays, worldObjects, rayStep);
 		renderer.renderShapes(worldObjects);
 		renderer.renderFrustrum();
 		renderer.renderImagePlane();

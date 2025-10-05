@@ -3,6 +3,7 @@
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
+#include <Eigen/Dense>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <iostream>
@@ -203,7 +204,13 @@ void Renderer::renderFrustrum() {
 	glDrawArrays(GL_LINES, 0, 24);
 }
 
-void Renderer::castRays(std::vector<Ray*>& rays, std::vector<Shape*>& worldObjects) {
+void Renderer::castRays(std::vector<Ray>& rays, std::vector<Shape*>& worldObjects) {
+
+	// Do each chunk on separate thread
+	// int chunks = 4;
+	// Eigen::Matrix<float, 3, 10> ray_origins;
+	// Eigen::Matrix<float, 3, 10> ray_directions;
+
 	std::vector<PixelRGB> pixels(screenWidth * screenHeight);
 
 	// Initialize all pixels to background color
@@ -221,14 +228,14 @@ void Renderer::castRays(std::vector<Ray*>& rays, std::vector<Shape*>& worldObjec
 
 			bool hitAnything = false;
 			for (Shape* obj : worldObjects) {
-				if (obj->intersect(*rays[rayIndex])) {
+				if (obj->intersect(rays[rayIndex])) {
 					hitAnything = true;
 					break;
 				}
 			}
 
-      // Simple skybox
-			float rayY = rays[rayIndex]->direction.y;
+			// Simple skybox
+			float rayY = rays[rayIndex].direction.y;
 			float t = 0.8f * rayY + 1.0f;
 			glm::vec3 sky_color = glm::vec3(1.0f, 1.0f, 1.0f) * (1.0f - t) + glm::vec3(0.5f, 0.7f, 1.0f) * t;
 
@@ -343,7 +350,7 @@ void Renderer::setupRasterUniforms(const glm::mat4& model, const glm::mat4& view
 	glUniform4f(colorLoc, color.r, color.g, color.b, color.a);
 }
 
-void Renderer::renderRays(const std::vector<Ray*>& rays, const std::vector<Shape*>& worldObjects, int rayStep) {
+void Renderer::renderRays(const std::vector<Ray>& rays, const std::vector<Shape*>& worldObjects, int rayStep) {
 	if (rays.empty() || rayVAOs.empty())
 		return;
 
@@ -363,7 +370,7 @@ void Renderer::renderRays(const std::vector<Ray*>& rays, const std::vector<Shape
 
 		bool hitAnything = false;
 		for (Shape* obj : worldObjects) {
-			if (obj->intersect(*rays[i])) {
+			if (obj->intersect(rays[i])) {
 				hitAnything = true;
 				break;
 			}
@@ -446,7 +453,9 @@ void Renderer::renderImagePlane() {
 	glDrawArrays(GL_TRIANGLES, 0, 6);
 }
 
-void Renderer::generateRays(std::vector<Ray*>& rays) {
+void Renderer::generateRays(std::vector<Ray>& rays) {
+	rays.reserve(screenWidth * screenHeight);
+
 	Transform savedCamTransform = cam.getSavedCamTransform();
 	glm::vec3 origin = savedCamTransform.position;
 
@@ -482,19 +491,18 @@ void Renderer::generateRays(std::vector<Ray*>& rays) {
 			//   c - (pw/2) < offset < c + (pw/2) }
 
 			bool renderOnPlane = true;
-			Ray* ray = new Ray(renderOnPlane ? posOnImagePlane : origin, direction);
-			rays.push_back(ray);
+			rays.push_back(Ray(renderOnPlane ? posOnImagePlane : origin, direction));
 		}
 	}
 }
 
-void Renderer::setupRayBuffers(const std::vector<Ray*>& rays) {
+void Renderer::setupRayBuffers(const std::vector<Ray>& rays) {
 	cleanupRays();
 
 	float rayLength = 128.0f;
-	for (Ray* ray : rays) {
-		glm::vec3 p0 = ray->origin;
-		glm::vec3 p1 = ray->origin + ray->direction * rayLength;
+	for (Ray ray : rays) {
+		glm::vec3 p0 = ray.origin;
+		glm::vec3 p1 = ray.origin + ray.direction * rayLength;
 
 		std::vector<float> vertices = {
 		    p0.x,
