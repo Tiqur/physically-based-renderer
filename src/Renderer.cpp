@@ -227,7 +227,12 @@ void Renderer::castRays(std::vector<Ray*>& rays, std::vector<Shape*>& worldObjec
 				}
 			}
 
-			glm::vec4 color = hitAnything ? glm::vec4(0.0f, 1.0f, 0.0f, 1.0f) : glm::vec4(0.2f, 0.2f, 0.2f, 1.0f);
+      // Simple skybox
+			float rayY = rays[rayIndex]->direction.y;
+			float t = 0.8f * rayY + 1.0f;
+			glm::vec3 sky_color = glm::vec3(1.0f, 1.0f, 1.0f) * (1.0f - t) + glm::vec3(0.5f, 0.7f, 1.0f) * t;
+
+			glm::vec4 color = hitAnything ? glm::vec4(0.0f, 1.0f, 0.0f, 1.0f) : glm::vec4(sky_color, 1.0f);
 
 			// Convert 2D coordinates to 1D index
 			int pixelIndex = y * screenWidth + x;
