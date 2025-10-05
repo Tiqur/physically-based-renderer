@@ -21,7 +21,7 @@ std::vector<Shape*> worldObjects;
 static int threadCount = 1;
 
 // For performance/debugging
-static int rayStep = 50;
+static int rayStep = 16;
 
 // Delta time
 static float deltaTime = 0.0f;
@@ -87,7 +87,7 @@ void renderUI(Renderer& renderer) {
 	}
 
 	ImGui::SliderInt("Thread Count", &threadCount, 1, 16);
-	ImGui::SliderInt("RayStep", &rayStep, 20, 500);
+	ImGui::SliderInt("RayStep", &rayStep, 1, 128);
 
 	if (ImGui::Button("Render")) {
 

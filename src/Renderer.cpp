@@ -365,9 +365,12 @@ void Renderer::renderRays(const std::vector<Ray>& rays, const std::vector<Shape*
 	glm::mat4 identity = glm::mat4(1.0f);
 
 	for (size_t i = 0; i < rays.size(); i++) {
-		if (i % rayStep != 0) // Skip some rays for performance
+		// skip rays for performance
+		size_t row = i / screenWidth;
+		size_t col = i % screenWidth;
+		if (row % rayStep != 0 || col % rayStep != 0)
 			continue;
-
+		//
 		bool hitAnything = false;
 		for (Shape* obj : worldObjects) {
 			if (obj->intersect(rays[i])) {
