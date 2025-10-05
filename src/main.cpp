@@ -169,10 +169,19 @@ int main() {
 		renderer.beginFrame();
 
 		// Render scene
-		// renderer.renderRays(rays, worldObjects, rayStep);
-		renderer.renderShapes(worldObjects);
-		renderer.renderFrustrum();
-		renderer.renderImagePlane();
+		measure("Render Rays", [&] {
+			renderer.renderRays(rays, worldObjects, rayStep);
+		});
+
+		measure("Render Shapes", [&] {
+			renderer.renderShapes(worldObjects);
+		});
+		measure("Render Frustrum", [&] {
+			renderer.renderFrustrum();
+		});
+		measure("Render ImagePlane", [&] {
+			renderer.renderImagePlane();
+		});
 
 		// Render UI
 		renderUI(renderer);

@@ -73,8 +73,8 @@ class Renderer {
 	std::unique_ptr<VAO> quadVAO;
 
 	// Ray Buffers
-	std::vector<VBO*> rayVBOs;
-	std::vector<VAO*> rayVAOs;
+	VBO* rayVBO;
+	VAO* rayVAO;
 
 	// Shape Buffers
 	std::vector<VBO*> shapeVBOs;

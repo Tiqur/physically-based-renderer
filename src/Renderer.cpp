@@ -351,7 +351,7 @@ void Renderer::setupRasterUniforms(const glm::mat4& model, const glm::mat4& view
 }
 
 void Renderer::renderRays(const std::vector<Ray>& rays, const std::vector<Shape*>& worldObjects, int rayStep) {
-	if (rays.empty() || rayVAOs.empty())
+	if (rays.empty())
 		return;
 
 	rasterProgram->use();
@@ -379,8 +379,8 @@ void Renderer::renderRays(const std::vector<Ray>& rays, const std::vector<Shape*
 		glm::vec4 color = hitAnything ? glm::vec4(0.0f, 1.0f, 0.0f, 0.05f) : glm::vec4(1.0f, 1.0f, 1.0f, 0.02f);
 
 		setupRasterUniforms(identity, view, projection, color);
-		rayVAOs[i]->bind();
-		glDrawArrays(GL_LINES, 0, 2);
+		rayVAO->bind();
+		glDrawArrays(GL_LINES, i * 2, 2);
 	}
 }
 
@@ -517,16 +517,16 @@ void Renderer::setupRayBuffers(const std::vector<Ray>& rays) {
 	}
 
 	// Upload all vertices at once
-	VBO* rayVBO = new VBO(&vertices);
-	VAO* rayVAO = new VAO();
+	VBO* _rayVBO = new VBO(&vertices);
+	VAO* _rayVAO = new VAO();
 
-	rayVAO->bind();
-	rayVBO->bind();
-	rayVAO->setAttribPointer(0, 3, GL_FLOAT, false, 3 * sizeof(float), (void*)0);
+	_rayVAO->bind();
+	_rayVBO->bind();
+	_rayVAO->setAttribPointer(0, 3, GL_FLOAT, false, 3 * sizeof(float), (void*)0);
 	glEnableVertexAttribArray(0);
 
-	rayVBOs.push_back(rayVBO);
-	rayVAOs.push_back(rayVAO);
+	rayVBO = _rayVBO;
+	rayVAO = _rayVAO;
 }
 
 void Renderer::setupShapeBuffers(const std::vector<Shape*>& shapes) {
@@ -548,12 +548,8 @@ void Renderer::setupShapeBuffers(const std::vector<Shape*>& shapes) {
 }
 
 void Renderer::cleanupRays() {
-	for (VBO* vbo : rayVBOs)
-		delete vbo;
-	for (VAO* vao : rayVAOs)
-		delete vao;
-	rayVBOs.clear();
-	rayVAOs.clear();
+	// delete rayVBO;
+	// delete rayVAO;
 }
 
 void Renderer::cleanupShapes() {
