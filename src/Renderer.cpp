@@ -497,32 +497,36 @@ void Renderer::generateRays(std::vector<Ray>& rays) {
 }
 
 void Renderer::setupRayBuffers(const std::vector<Ray>& rays) {
-	cleanupRays();
+	cleanupRays(); // clear old buffers
 
 	float rayLength = 128.0f;
-	for (Ray ray : rays) {
+	std::vector<float> vertices;
+	vertices.reserve(rays.size() * 6); // Allocate memory for all rays
+
+	for (const Ray& ray : rays) {
 		glm::vec3 p0 = ray.origin;
 		glm::vec3 p1 = ray.origin + ray.direction * rayLength;
 
-		std::vector<float> vertices = {
-		    p0.x,
-		    p0.y,
-		    p0.z,
-		    p1.x,
-		    p1.y,
-		    p1.z};
+		vertices.push_back(p0.x);
+		vertices.push_back(p0.y);
+		vertices.push_back(p0.z);
 
-		VBO* rayVBO = new VBO(&vertices);
-		VAO* rayVAO = new VAO();
-
-		rayVAO->bind();
-		rayVBO->bind();
-		rayVAO->setAttribPointer(0, 3, GL_FLOAT, false, 3 * sizeof(float), (void*)0);
-		glEnableVertexAttribArray(0);
-
-		rayVBOs.push_back(rayVBO);
-		rayVAOs.push_back(rayVAO);
+		vertices.push_back(p1.x);
+		vertices.push_back(p1.y);
+		vertices.push_back(p1.z);
 	}
+
+	// Upload all vertices at once
+	VBO* rayVBO = new VBO(&vertices);
+	VAO* rayVAO = new VAO();
+
+	rayVAO->bind();
+	rayVBO->bind();
+	rayVAO->setAttribPointer(0, 3, GL_FLOAT, false, 3 * sizeof(float), (void*)0);
+	glEnableVertexAttribArray(0);
+
+	rayVBOs.push_back(rayVBO);
+	rayVAOs.push_back(rayVAO);
 }
 
 void Renderer::setupShapeBuffers(const std::vector<Shape*>& shapes) {
