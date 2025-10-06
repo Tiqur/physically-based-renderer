@@ -1,5 +1,6 @@
 #include "Cube.h"
 #include "Ray.h"
+#include "RayTracer.h"
 #include "Renderer.h"
 #include "Shape.h"
 #include "Sphere.h"
@@ -14,93 +15,94 @@
 #include <thread>
 #include <vector>
 
-void testIntersections() {
-	int default_ray_steps = 8;
-	Eigen::Array<int, 1, 2> ray_steps;        // Negative ray step = inactive
-	ray_steps.setConstant(default_ray_steps); // Set all to default value
-
-	Eigen::Matrix<int, 3, 2> ray_colors; // RGB - Start at 0
-	ray_colors.col(0) << 0, 0, 0;
-	ray_colors.col(1) << 0, 0, 0;
-	std::cout << ray_colors << "\n---\n";
-
-	Eigen::Matrix<float, 3, 2> ray_origins;
-	ray_origins.col(0) << -1, -1, -1; // Should intersect
-	ray_origins.col(1) << 1, 1, 1;    // Shouldn't intersect
-	std::cout << ray_origins << "\n---\n";
-
-	Eigen::Matrix<float, 3, 2> ray_directions;
-	ray_directions.col(0) << 1, 1, 1;
-	ray_directions.col(1) << 1, 1, 1;
-	std::cout << ray_directions << "\n---\n";
-
-	Eigen::Vector3f sphere_center(0, 0, 0);
-	float sphere_radius = 1.0f;
-
-	for (int i = 0; i < ray_origins.cols(); i++) {
-		// Skip masked out rays
-		if (ray_steps(0, i) < 0)
-			continue;
-
-		ray_steps(0, i)--;
-
-		Eigen::Vector3f o = ray_origins.col(i);
-		Eigen::Vector3f d = ray_directions.col(i);
-		d.normalize();
-
-		Eigen::Vector3f oc = o - sphere_center;
-
-		float a = d.dot(d);
-		float b = 2 * d.dot(oc);
-		float c = oc.dot(oc) - sphere_radius * sphere_radius;
-
-		float discriminant = b * b - 4 * a * c;
-
-		if (discriminant < 0) {
-			std::cout << "Ray " << i << " misses the sphere\n";
-			// Mask out - NEGATIVE STEP MEANS INACTIVE
-			ray_steps(0, i) = -1;
-		} else {
-			float t1 = (-b - std::sqrt(discriminant)) / (2 * a);
-			float t2 = (-b + std::sqrt(discriminant)) / (2 * a);
-			float t = (t1 > 0) ? t1 : ((t2 > 0) ? t2 : -1);
-			if (t < 0) {
-				std::cout << "Ray " << i << " hits behind the origin\n";
-				// Mask out
-				ray_steps(0, i) = -1;
-			} else {
-				Eigen::Vector3f hit_point = o + t * d;
-				std::cout << "Ray " << i << " intersects at t=" << t << ", point=" << hit_point.transpose() << "\n";
-
-				// TODO: Replace these test values
-
-				// Update colors
-				ray_colors.col(i) << 255, 0, 0;
-
-				// Update origin
-				ray_origins.col(i) << ray_origins.col(i) + Eigen::Vector3f::Ones();
-
-				// Update directions
-				ray_directions.col(i) << (ray_directions.col(i) + Eigen::Vector3f::Ones());
-				ray_directions.col(i).normalize();
-
-				// Check for intersections again (loop)
-			}
-		}
-	}
-
-	// ray_origins + t*ray_directions
-
-	// int t = 10;
-	// std::cout << (((ray_origins + t * ray_directions) /*-sphere_pos*/).transpose()) * (((ray_origins + t * ray_directions) /*-sphere_pos*/)) << std::endl;
-
-	// Eigen::Matrix<float, 1, 3> sphere;
-	// sphere.row(0) << 1, 1, 1;
-	// std::cout << sphere << std::endl;
-	// std::cout << (sphere * sphere.transpose()) << std::endl;
-
-	exit(0);
-}
+// void testIntersections() {
+//	int default_ray_steps = 8;
+//	Eigen::Array<int, 1, 2> ray_steps;        // Negative ray step = inactive
+//	ray_steps.setConstant(default_ray_steps); // Set all to default value
+//
+//	Eigen::Matrix<int, 3, 2> ray_colors; // RGB - Start at 0
+//	ray_colors.col(0) << 0, 0, 0;
+//	ray_colors.col(1) << 0, 0, 0;
+//	std::cout << ray_colors << "\n---\n";
+//
+//	Eigen::Matrix<float, 3, 2> ray_origins;
+//	ray_origins.col(0) << -1, -1, -1; // Should intersect
+//	ray_origins.col(1) << 1, 1, 1;    // Shouldn't intersect
+//	std::cout << ray_origins << "\n---\n";
+//
+//	Eigen::Matrix<float, 3, 2> ray_directions;
+//	ray_directions.col(0) << 1, 1, 1;
+//	ray_directions.col(1) << 1, 1, 1;
+//	std::cout << ray_directions << "\n---\n";
+//
+//	Eigen::Vector3f sphere_center(0, 0, 0);
+//	float sphere_radius = 1.0f;
+//
+//	for (int i = 0; i < ray_origins.cols(); i++) {
+//		// Skip masked out rays
+//		if (ray_steps(0, i) < 0)
+//			continue;
+//
+//		ray_steps(0, i)--;
+//
+//		Eigen::Vector3f o = ray_origins.col(i);
+//		Eigen::Vector3f d = ray_directions.col(i);
+//		d.normalize();
+//
+//		Eigen::Vector3f oc = o - sphere_center;
+//
+//		float a = d.dot(d);
+//		float b = 2 * d.dot(oc);
+//		float c = oc.dot(oc) - sphere_radius * sphere_radius;
+//
+//		float discriminant = b * b - 4 * a * c;
+//
+//		if (discriminant < 0) {
+//			std::cout << "Ray " << i << " misses the sphere\n";
+//			// Mask out - NEGATIVE STEP MEANS INACTIVE
+//			ray_steps(0, i) = -1;
+//		} else {
+//			float t1 = (-b - std::sqrt(discriminant)) / (2 * a);
+//			float t2 = (-b + std::sqrt(discriminant)) / (2 * a);
+//			float t = (t1 > 0) ? t1 : ((t2 > 0) ? t2 : -1);
+//			if (t < 0) {
+//				std::cout << "Ray " << i << " hits behind the origin\n";
+//				// Mask out
+//				ray_steps(0, i) = -1;
+//			} else {
+//				Eigen::Vector3f hit_point = o + t * d;
+//				std::cout << "Ray " << i << " intersects at t=" << t << ", point=" << hit_point.transpose() << "\n";
+//
+//				// TODO: Replace these test values
+//         // These will update depending on the material
+//
+//				// Update colors
+//				ray_colors.col(i) << 255, 0, 0;
+//
+//				// Update origin
+//				ray_origins.col(i) << ray_origins.col(i) + Eigen::Vector3f::Ones();
+//
+//				// Update directions
+//				ray_directions.col(i) << (ray_directions.col(i) + Eigen::Vector3f::Ones());
+//				ray_directions.col(i).normalize();
+//
+//				// Check for intersections again (loop)
+//			}
+//		}
+//	}
+//
+//	// ray_origins + t*ray_directions
+//
+//	// int t = 10;
+//	// std::cout << (((ray_origins + t * ray_directions) /*-sphere_pos*/).transpose()) * (((ray_origins + t * ray_directions) /*-sphere_pos*/)) << std::endl;
+//
+//	// Eigen::Matrix<float, 1, 3> sphere;
+//	// sphere.row(0) << 1, 1, 1;
+//	// std::cout << sphere << std::endl;
+//	// std::cout << (sphere * sphere.transpose()) << std::endl;
+//
+//	exit(0);
+// }
 
 // Scene data
 std::vector<Ray> rays;
@@ -216,7 +218,7 @@ void renderUI(Renderer& renderer) {
 }
 
 int main() {
-	testIntersections();
+	// testIntersections();
 	std::cout << "Initializing ImGui..." << std::endl;
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
@@ -245,6 +247,9 @@ int main() {
 	// Setup scene
 	setupScene();
 	renderer.setupShapeBuffers(worldObjects);
+
+	RayTracer tracer(800 * 600, 1);
+	tracer.initializeRays(renderer);
 
 	// Main loop
 	while (!glfwWindowShouldClose(renderer.getWindow())) {

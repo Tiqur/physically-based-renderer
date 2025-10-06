@@ -71,6 +71,7 @@ set(SOURCES
     src/PixelRGB.cpp
     src/Ray.cpp
     src/Shape.cpp
+    src/RayTracer.cpp
     src/ImagePlane.cpp
     src/Transform.cpp
     src/Renderer.cpp
