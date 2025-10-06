@@ -350,6 +350,7 @@ void Renderer::setupRasterUniforms(const glm::mat4& model, const glm::mat4& view
 	glUniform4f(colorLoc, color.r, color.g, color.b, color.a);
 }
 
+// TODO: Use Instancing
 void Renderer::renderRays(const std::vector<Ray>& rays, const std::vector<Shape*>& worldObjects, int rayStep) {
 	if (rays.empty())
 		return;
