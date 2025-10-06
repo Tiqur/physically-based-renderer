@@ -15,6 +15,10 @@
 #include <vector>
 
 void testIntersections() {
+	int default_ray_steps = 8;
+	Eigen::Array<int, 1, 2> ray_steps;        // Negative ray step = inactive
+	ray_steps.setConstant(default_ray_steps); // Set all to default value
+
 	Eigen::Matrix<int, 3, 2> ray_colors; // RGB - Start at 0
 	ray_colors.col(0) << 0, 0, 0;
 	ray_colors.col(1) << 0, 0, 0;
@@ -35,8 +39,10 @@ void testIntersections() {
 
 	for (int i = 0; i < ray_origins.cols(); i++) {
 		// Skip masked out rays
-		if (ray_colors.col(i).minCoeff() < 0)
+		if (ray_steps(0, i) < 0)
 			continue;
+
+		ray_steps(0, i)--;
 
 		Eigen::Vector3f o = ray_origins.col(i);
 		Eigen::Vector3f d = ray_directions.col(i);
@@ -52,8 +58,8 @@ void testIntersections() {
 
 		if (discriminant < 0) {
 			std::cout << "Ray " << i << " misses the sphere\n";
-			// Mask out - NEGATIVE COLOR MEANS INACTIVE
-			ray_colors.col(i) << -1, -1, -1;
+			// Mask out - NEGATIVE STEP MEANS INACTIVE
+			ray_steps(0, i) = -1;
 		} else {
 			float t1 = (-b - std::sqrt(discriminant)) / (2 * a);
 			float t2 = (-b + std::sqrt(discriminant)) / (2 * a);
@@ -61,12 +67,12 @@ void testIntersections() {
 			if (t < 0) {
 				std::cout << "Ray " << i << " hits behind the origin\n";
 				// Mask out
-				ray_colors.col(i) << -1, -1, -1;
+				ray_steps(0, i) = -1;
 			} else {
 				Eigen::Vector3f hit_point = o + t * d;
 				std::cout << "Ray " << i << " intersects at t=" << t << ", point=" << hit_point.transpose() << "\n";
 
-        // TODO: Replace these test values
+				// TODO: Replace these test values
 
 				// Update colors
 				ray_colors.col(i) << 255, 0, 0;
