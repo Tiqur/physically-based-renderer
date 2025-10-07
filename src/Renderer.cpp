@@ -1,4 +1,5 @@
 #include "Renderer.h"
+#include "RayTracer.h"
 #include "Shader.h"
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
@@ -61,7 +62,7 @@ static const char* quadFragmentShaderSource = R"(
 )";
 
 Renderer::Renderer(int width, int height)
-    : window(nullptr), screenWidth(width), screenHeight(height), cam(), textureID(0), isDragging(false), lastMouseX(0.0), lastMouseY(0.0), mouseSensitivity(0.1f) {
+    : window(nullptr), screenWidth(width), screenHeight(height), cam(), rayVBO(nullptr), rayVAO(nullptr), textureID(0), isDragging(false), lastMouseX(0.0), lastMouseY(0.0), mouseSensitivity(0.1f) {
 
 	// Create and set instance
 	instance = this;
@@ -351,8 +352,16 @@ void Renderer::setupRasterUniforms(const glm::mat4& model, const glm::mat4& view
 }
 
 // TODO: Use Instancing
-void Renderer::renderRays(const std::vector<Ray>& rays, const std::vector<Shape*>& worldObjects, int rayStep) {
-	if (rays.empty())
+void Renderer::renderRays(const RayTracer& tracer, int rayStep) {
+	if (!rayVAO || !rayVBO) {
+		return;
+	}
+
+	size_t numRays = (size_t)tracer.getNumRays();
+	const Eigen::Matrix<float, 3, Eigen::Dynamic>& origins = tracer.getRayOrigins();
+	const Eigen::Matrix<float, 3, Eigen::Dynamic>& directions = tracer.getRayDirections();
+
+	if (numRays == 0)
 		return;
 
 	rasterProgram->use();
@@ -365,27 +374,62 @@ void Renderer::renderRays(const std::vector<Ray>& rays, const std::vector<Shape*
 	    cam.getFarPlane());
 	glm::mat4 identity = glm::mat4(1.0f);
 
-	for (size_t i = 0; i < rays.size(); i++) {
-		// skip rays for performance
-		size_t row = i / screenWidth;
-		size_t col = i % screenWidth;
-		if (row % rayStep != 0 || col % rayStep != 0)
-			continue;
-		//
-		bool hitAnything = false;
-		for (Shape* obj : worldObjects) {
-			if (obj->intersect(rays[i])) {
-				hitAnything = true;
-				break;
-			}
-		}
+	(void)rayStep;
+	(void)origins;
+	(void)directions;
 
+	for (size_t i = 0; i < numRays; ++i) {
+		bool hitAnything = false;
 		glm::vec4 color = hitAnything ? glm::vec4(0.0f, 1.0f, 0.0f, 0.05f) : glm::vec4(1.0f, 1.0f, 1.0f, 0.02f);
 
-		setupRasterUniforms(identity, view, projection, color);
 		rayVAO->bind();
+		setupRasterUniforms(identity, view, projection, color);
 		glDrawArrays(GL_LINES, i * 2, 2);
 	}
+
+	// for (size_t i = 0; i < numRays; ++i) {
+	//	size_t row = i / screenWidth;
+	//	size_t col = i % screenWidth;
+	//	if (row % rayStep != 0 || col % rayStep != 0)
+	//		continue;
+
+	//	// Each column is a ray (since it's 3 x N)
+	//	const Eigen::Vector3f origin = origins.col(i);
+	//	const Eigen::Vector3f direction = directions.col(i);
+
+	//	std::cout << "Ray " << i << ":\n";
+	//	std::cout << "  Origin: " << origin.transpose() << "\n";
+	//	std::cout << "  Direction: " << direction.transpose() << "\n";
+
+	//	bool hitAnything = false;
+	//	glm::vec4 color = hitAnything ? glm::vec4(0.0f, 1.0f, 0.0f, 0.05f) : glm::vec4(1.0f, 1.0f, 1.0f, 0.02f);
+
+	//	rayVAO->bind();
+	//	setupRasterUniforms(identity, view, projection, color);
+	//	glDrawArrays(GL_LINES, i * 2, 2);
+	//}
+
+	// for (size_t i = 0; i < rays.size(); i++) {
+	//	// skip rays for performance
+	//	size_t row = i / screenWidth;
+	//	size_t col = i % screenWidth;
+	//	if (row % rayStep != 0 || col % rayStep != 0)
+	//		continue;
+	//	//
+	//	bool hitAnything = false;
+	//	for (Shape* obj : worldObjects) {
+	//		if (obj->intersect(rays[i])) {
+	//			hitAnything = true;
+	//			break;
+	//		}
+	//	}
+
+	//	glm::vec4 color = hitAnything ? glm::vec4(0.0f, 1.0f, 0.0f, 0.05f) : glm::vec4(1.0f, 1.0f, 1.0f, 0.02f);
+
+	//	rayVAO->bind();
+	//	setupRasterUniforms(identity, view, projection, color);
+	//	glDrawArrays(GL_LINES, i * 2, 2);
+	//}
 }
 
 void Renderer::renderShapes(const std::vector<Shape*>& shapes) {
@@ -457,80 +501,85 @@ void Renderer::renderImagePlane() {
 	glDrawArrays(GL_TRIANGLES, 0, 6);
 }
 
-void Renderer::generateRays(std::vector<Ray>& rays) {
-	rays.reserve(screenWidth * screenHeight);
+// void Renderer::generateRays(std::vector<Ray>& rays) {
+//	rays.reserve(screenWidth * screenHeight);
+//
+//	Transform savedCamTransform = cam.getSavedCamTransform();
+//	glm::vec3 origin = savedCamTransform.position;
+//
+//	// Offset each ray from top left point on ImagePlane for reference
+//	const ImagePlane& plane = cam.getImagePlane();
+//	glm::vec3 quadTopLeft = plane.topLeft();
+//
+//	// Offset each pixel to ensure ray is centered
+//	float quadWorldWidth = plane.worldSpaceWidth();
+//	float pixelWidth = quadWorldWidth / (float)screenWidth;
+//
+//	// Iterate for each pixel in image
+//	for (int x = 0; x < screenWidth; x++) {
+//
+//		// Pixel offset right
+//		glm::vec3 offsetRight = plane.transform.right() * (pixelWidth * x);
+//
+//		for (int y = 0; y < screenHeight; y++) {
+//
+//			// Pixel offset down
+//			glm::vec3 offsetDown = plane.transform.up() * (pixelWidth * y);
+//			glm::vec3 posOnImagePlane = quadTopLeft + offsetRight - offsetDown;
+//
+//			// Normalize each vector to get a field of unit vectors (each representing cast direction)
+//			glm::vec3 direction = glm::normalize(posOnImagePlane - origin);
+//
+//			// Max dir can go in any direction for Monte Carlo based anti aliasing:
+//			// let dirToCenterOfPixel = <a, b, c>
+//			//
+//			//   { (offset, a, b, c) ∈ ℝ⁴ |
+//			//   a - (pw/2) < offset < a + (pw/2),
+//			//   b - (pw/2) < offset < b + (pw/2),
+//			//   c - (pw/2) < offset < c + (pw/2) }
+//
+//			bool renderOnPlane = true;
+//			rays.push_back(Ray(renderOnPlane ? posOnImagePlane : origin, direction));
+//		}
+//	}
+// }
 
-	Transform savedCamTransform = cam.getSavedCamTransform();
-	glm::vec3 origin = savedCamTransform.position;
-
-	// Offset each ray from top left point on ImagePlane for reference
-	const ImagePlane& plane = cam.getImagePlane();
-	glm::vec3 quadTopLeft = plane.topLeft();
-
-	// Offset each pixel to ensure ray is centered
-	float quadWorldWidth = plane.worldSpaceWidth();
-	float pixelWidth = quadWorldWidth / (float)screenWidth;
-
-	// Iterate for each pixel in image
-	for (int x = 0; x < screenWidth; x++) {
-
-		// Pixel offset right
-		glm::vec3 offsetRight = plane.transform.right() * (pixelWidth * x);
-
-		for (int y = 0; y < screenHeight; y++) {
-
-			// Pixel offset down
-			glm::vec3 offsetDown = plane.transform.up() * (pixelWidth * y);
-			glm::vec3 posOnImagePlane = quadTopLeft + offsetRight - offsetDown;
-
-			// Normalize each vector to get a field of unit vectors (each representing cast direction)
-			glm::vec3 direction = glm::normalize(posOnImagePlane - origin);
-
-			// Max dir can go in any direction for Monte Carlo based anti aliasing:
-			// let dirToCenterOfPixel = <a, b, c>
-			//
-			//   { (offset, a, b, c) ∈ ℝ⁴ |
-			//   a - (pw/2) < offset < a + (pw/2),
-			//   b - (pw/2) < offset < b + (pw/2),
-			//   c - (pw/2) < offset < c + (pw/2) }
-
-			bool renderOnPlane = true;
-			rays.push_back(Ray(renderOnPlane ? posOnImagePlane : origin, direction));
-		}
-	}
-}
-
-void Renderer::setupRayBuffers(const std::vector<Ray>& rays) {
+// TODO: Move to RayTracer class
+void Renderer::setupRayBuffers(const RayTracer& tracer) {
 	cleanupRays(); // clear old buffers
 
+	size_t numRays = tracer.getNumRays();
 	float rayLength = 128.0f;
 	std::vector<float> vertices;
-	vertices.reserve(rays.size() * 6); // Allocate memory for all rays
+	vertices.reserve(numRays * 6);
 
-	for (const Ray& ray : rays) {
-		glm::vec3 p0 = ray.origin;
-		glm::vec3 p1 = ray.origin + ray.direction * rayLength;
+	const auto& origins = tracer.getRayOrigins();
+	const auto& directions = tracer.getRayDirections();
 
-		vertices.push_back(p0.x);
-		vertices.push_back(p0.y);
-		vertices.push_back(p0.z);
+	for (size_t i = 0; i < numRays; i++) {
+		Eigen::Vector3f origin = origins.col(i);
+		Eigen::Vector3f direction = directions.col(i);
 
-		vertices.push_back(p1.x);
-		vertices.push_back(p1.y);
-		vertices.push_back(p1.z);
+		Eigen::Vector3f endpoint = origin + direction * rayLength;
+
+		// Add line vertices (origin -> endpoint)
+		vertices.push_back(origin.x());
+		vertices.push_back(origin.y());
+		vertices.push_back(origin.z());
+
+		vertices.push_back(endpoint.x());
+		vertices.push_back(endpoint.y());
+		vertices.push_back(endpoint.z());
 	}
 
 	// Upload all vertices at once
-	VBO* _rayVBO = new VBO(&vertices);
-	VAO* _rayVAO = new VAO();
+	rayVBO = new VBO(&vertices);
+	rayVAO = new VAO();
 
-	_rayVAO->bind();
-	_rayVBO->bind();
-	_rayVAO->setAttribPointer(0, 3, GL_FLOAT, false, 3 * sizeof(float), (void*)0);
+	rayVAO->bind();
+	rayVBO->bind();
+	rayVAO->setAttribPointer(0, 3, GL_FLOAT, false, 3 * sizeof(float), (void*)0);
 	glEnableVertexAttribArray(0);
-
-	rayVBO = _rayVBO;
-	rayVAO = _rayVAO;
 }
 
 void Renderer::setupShapeBuffers(const std::vector<Shape*>& shapes) {

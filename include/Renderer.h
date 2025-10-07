@@ -13,6 +13,8 @@
 #include <memory>
 #include <vector>
 
+class RayTracer;
+
 class Renderer {
   public:
 	Renderer(int width, int height);
@@ -24,15 +26,15 @@ class Renderer {
 	// Rendering
 	void beginFrame();
 	void endFrame();
-	void renderRays(const std::vector<Ray>& rays, const std::vector<Shape*>& worldObjects, int rayStep);
+	void renderRays(const RayTracer& tracer, int rayStep);
 	void renderFrustrum();
 	void renderShapes(const std::vector<Shape*>& shapes);
 	void renderImagePlane();
 
 	// Rays
-	void generateRays(std::vector<Ray>& rays);
+	// void generateRays(std::vector<Ray>& rays);
 	void castRays(std::vector<Ray>& rays, std::vector<Shape*>& worldObjects);
-	void setupRayBuffers(const std::vector<Ray>& rays);
+	void setupRayBuffers(const RayTracer& tracer);
 	void cleanupRays();
 
 	// Shapes

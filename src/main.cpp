@@ -15,6 +15,10 @@
 #include <thread>
 #include <vector>
 
+// TODO: Remove magic numbers
+RayTracer tracer(800 * 600, 1);
+Renderer renderer(800, 600);
+
 // void testIntersections() {
 //	int default_ray_steps = 8;
 //	Eigen::Array<int, 1, 2> ray_steps;        // Negative ray step = inactive
@@ -105,11 +109,10 @@
 // }
 
 // Scene data
-std::vector<Ray> rays;
 std::vector<Shape*> worldObjects;
 
 // Renderer settings
-static int threadCount = 1;
+// static int threadCount = 1;
 
 // For performance/debugging
 static int rayStep = 16;
@@ -133,7 +136,7 @@ void cleanupRays() {
 	// for (Ray* ray : rays) {
 	//	delete ray;
 	// }
-	rays.clear();
+	// rays.clear();
 }
 
 void cleanupScene() {
@@ -169,35 +172,41 @@ void renderUI(Renderer& renderer) {
 	ImGui::Begin("Scene Settings");
 
 	ImGui::Button("Load/Select Scene");
-	ImGui::Button("Start");
-	ImGui::Button("Stop");
 
 	if (ImGui::Button("Reset")) {
 		cleanupRays();
 		renderer.cleanupRays();
 	}
 
-	ImGui::SliderInt("Thread Count", &threadCount, 1, 16);
+	// ImGui::SliderInt("Thread Count", &threadCount, 1, 16);
 	ImGui::SliderInt("RayStep", &rayStep, 1, 128);
 
+	if (ImGui::Button("Step")) {
+		tracer.traceStep();
+	}
 	if (ImGui::Button("Render")) {
 
-		measure("Cleanup Rays", [&] {
-			cleanupRays();
-			renderer.cleanupRays();
-		});
+		// tracer.cleanupRays();
+		tracer.initializeRays(renderer);
+		renderer.setupRayBuffers(tracer);
 
-		measure("Generate Rays", [&] {
-			renderer.generateRays(rays);
-		});
+		tracer.traceAll();
+		// measure("Cleanup Rays", [&] {
+		//	cleanupRays();
+		//	renderer.cleanupRays();
+		// });
 
-		measure("Setup Buffers", [&] {
-			renderer.setupRayBuffers(rays);
-		});
+		// measure("Generate Rays", [&] {
+		//	renderer.generateRays(rays);
+		// });
 
-		measure("Cast Rays", [&] {
-			renderer.castRays(rays, worldObjects);
-		});
+		// measure("Setup Buffers", [&] {
+		//	renderer.setupRayBuffers(rays);
+		// });
+
+		// measure("Cast Rays", [&] {
+		//	renderer.castRays(rays, worldObjects);
+		// });
 
 		// std::thread t1(&Renderer::castRays, &renderer, std::ref(rays), std::ref(worldObjects));
 		// std::cout << "Ray Count: " << rays.size() << std::endl;
@@ -224,7 +233,6 @@ int main() {
 	ImGui::CreateContext();
 	ImGui::StyleColorsDark();
 
-	Renderer renderer(800, 600);
 	if (!renderer.initialize()) {
 		std::cerr << "Failed to initialize renderer!" << std::endl;
 		return -1;
@@ -248,8 +256,8 @@ int main() {
 	setupScene();
 	renderer.setupShapeBuffers(worldObjects);
 
-	RayTracer tracer(800 * 600, 1);
-	tracer.initializeRays(renderer);
+	std::cout << renderer.getWidth() << std::endl;
+	std::cout << renderer.getHeight() << std::endl;
 
 	// Main loop
 	while (!glfwWindowShouldClose(renderer.getWindow())) {
@@ -265,7 +273,7 @@ int main() {
 
 		// Render scene
 		measure("Render Rays", [&] {
-			renderer.renderRays(rays, worldObjects, rayStep);
+			renderer.renderRays(tracer, rayStep);
 		});
 
 		measure("Render Shapes", [&] {

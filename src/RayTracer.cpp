@@ -11,40 +11,66 @@ RayTracer::RayTracer(int numRays, int maxSteps) : N(numRays), maxSteps(maxSteps)
 	ray_steps.setConstant(maxSteps);
 }
 
+// If user changes window size
+void RayTracer::resize(int numRays) {
+	N = numRays;
+	ray_origins.resize(3, N);
+	ray_directions.resize(3, N);
+	ray_colors.resize(3, N);
+	ray_steps.resize(1, N);
+
+	ray_colors.setZero();
+	ray_steps.setConstant(maxSteps);
+}
+
 void RayTracer::initializeRays(Renderer& r) {
+
 	Camera& cam = r.getCamera();
 	Transform savedCamTransform = cam.getSavedCamTransform();
+	glm::vec3 origin = savedCamTransform.position;
+	Eigen::Vector3f cameraOrigin(origin.x, origin.y, origin.z);
 
-	// Offset each ray from top left point on ImagePlane for reference
-	const ImagePlane& plane = cam.getImagePlane();
-	glm::vec3 quadTopLeft = plane.topLeft();
+	auto screenWidth = r.getWidth();
+	auto screenHeight = r.getHeight();
+
+	// Must have in case user resizes window
+	// Also not in glfw resize callback due to performance
+	int requiredRays = screenWidth * screenHeight;
+	if (screenWidth * screenHeight != N) {
+		resize(requiredRays);
+	}
+
+	auto plane = cam.getImagePlane();
+	auto quadTopLeft = plane.topLeft();
+	float quadWorldWidth = plane.worldSpaceWidth();
 
 	// Offset each pixel to ensure ray is centered
-	float quadWorldWidth = plane.worldSpaceWidth();
-	float pixelWidth = quadWorldWidth / (float)r.getWidth();
+	float pixelWidth = quadWorldWidth / (float)screenWidth;
+	// float pixelHeight = quadWorldHeight / (float)screenHeight();
 
-	// All rays start at same point initially
-	glm::vec3 o = savedCamTransform.position;
-	Eigen::Vector3f origin(o.x, o.y, o.z);
-	ray_origins = origin.replicate(1, N);
+	// std::cout << screenWidth << std::endl;
+	// std::cout << screenHeight << std::endl;
+	//  exit(0);
 
 	// Iterate for each pixel in image
-	for (int x = 0; x < r.getWidth(); x++) {
+	for (int x = 0; x < screenWidth; x++) {
 
 		// Pixel offset right
 		glm::vec3 offsetRight = plane.transform.right() * (pixelWidth * x);
 
-		for (int y = 0; y < r.getHeight(); y++) {
+		for (int y = 0; y < screenHeight; y++) {
 
 			// Pixel offset down
 			glm::vec3 offsetDown = plane.transform.up() * (pixelWidth * y);
 			glm::vec3 posOnImagePlane = quadTopLeft + offsetRight - offsetDown;
 
-			// Convert GLM to Eigen
+			// Convert to Eigen
 			Eigen::Vector3f posEigen(posOnImagePlane.x, posOnImagePlane.y, posOnImagePlane.z);
 
-			// Normalize each vector to get a field of unit vectors (each representing cast direction)
-			ray_directions.col(x + y * r.getWidth()) = (posEigen - origin).normalized();
+			// Set ray properties
+			int index = x + y * screenWidth;
+			ray_origins.col(index) = posEigen;
+			ray_directions.col(index) = (posEigen - cameraOrigin).normalized();
 
 			// TODO: I'm guessing for this we can either add another value to associate pixel with ray, or use chunks of N length?
 			// Max dir can go in any direction for Monte Carlo based anti aliasing:
@@ -58,10 +84,6 @@ void RayTracer::initializeRays(Renderer& r) {
 	}
 
 	ray_colors.setZero();
-	ray_steps.setConstant(maxSteps);
-	//std::cout << ray_origins << std::endl;
-	//std::cout << ray_directions << std::endl;
-	exit(0);
 }
 
 void RayTracer::traceAll() {
@@ -71,6 +93,7 @@ void RayTracer::traceAll() {
 }
 
 void RayTracer::traceStep() {
+	// TODO: Parallelize across N threads
 	for (int i = 0; i < N; ++i) {
 		if (ray_steps(0, i) < 1)
 			continue; // inactive ray
