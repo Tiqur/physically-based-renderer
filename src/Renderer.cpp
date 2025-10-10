@@ -205,53 +205,53 @@ void Renderer::renderFrustrum() {
 	glDrawArrays(GL_LINES, 0, 24);
 }
 
-void Renderer::castRays(std::vector<Ray>& rays, std::vector<Shape*>& worldObjects) {
-
-	// Do each chunk on separate thread
-	// int chunks = 4;
-	// Eigen::Matrix<float, 3, 10> ray_origins;
-	// Eigen::Matrix<float, 3, 10> ray_directions;
-
-	std::vector<PixelRGB> pixels(screenWidth * screenHeight);
-
-	// Initialize all pixels to background color
-	for (int i = 0; i < screenWidth * screenHeight; i++) {
-		pixels[i] = PixelRGB(glm::vec3(0.0f, 0.0f, 0.0f));
-	}
-
-	// Check for intersections
-	size_t rayIndex = 0;
-	for (int x = 0; x < screenWidth; x++) {
-		for (int y = 0; y < screenHeight; y++) {
-
-			if (rayIndex >= rays.size())
-				break;
-
-			bool hitAnything = false;
-			for (Shape* obj : worldObjects) {
-				if (obj->intersect(rays[rayIndex])) {
-					hitAnything = true;
-					break;
-				}
-			}
-
-			// Simple skybox
-			float rayY = rays[rayIndex].direction.y;
-			float t = 0.8f * rayY + 1.0f;
-			glm::vec3 sky_color = glm::vec3(1.0f, 1.0f, 1.0f) * (1.0f - t) + glm::vec3(0.5f, 0.7f, 1.0f) * t;
-
-			glm::vec4 color = hitAnything ? glm::vec4(0.0f, 1.0f, 0.0f, 1.0f) : glm::vec4(sky_color, 1.0f);
-
-			// Convert 2D coordinates to 1D index
-			int pixelIndex = y * screenWidth + x;
-			pixels[pixelIndex] = PixelRGB(color);
-
-			rayIndex++;
-		}
-	}
-
-	updateTexture(pixels);
-}
+// void Renderer::castRays(std::vector<Ray>& rays, std::vector<Shape*>& worldObjects) {
+//
+//	// Do each chunk on separate thread
+//	// int chunks = 4;
+//	// Eigen::Matrix<float, 3, 10> ray_origins;
+//	// Eigen::Matrix<float, 3, 10> ray_directions;
+//
+//	std::vector<PixelRGB> pixels(screenWidth * screenHeight);
+//
+//	// Initialize all pixels to background color
+//	for (int i = 0; i < screenWidth * screenHeight; i++) {
+//		pixels[i] = PixelRGB(glm::vec3(0.0f, 0.0f, 0.0f));
+//	}
+//
+//	// Check for intersections
+//	size_t rayIndex = 0;
+//	for (int x = 0; x < screenWidth; x++) {
+//		for (int y = 0; y < screenHeight; y++) {
+//
+//			if (rayIndex >= rays.size())
+//				break;
+//
+//			bool hitAnything = false;
+//			for (Shape* obj : worldObjects) {
+//				if (obj->intersect(rays[rayIndex])) {
+//					hitAnything = true;
+//					break;
+//				}
+//			}
+//
+//			// Simple skybox
+//			float rayY = rays[rayIndex].direction.y;
+//			float t = 0.8f * rayY + 1.0f;
+//			glm::vec3 sky_color = glm::vec3(1.0f, 1.0f, 1.0f) * (1.0f - t) + glm::vec3(0.5f, 0.7f, 1.0f) * t;
+//
+//			glm::vec4 color = hitAnything ? glm::vec4(0.0f, 1.0f, 0.0f, 1.0f) : glm::vec4(sky_color, 1.0f);
+//
+//			// Convert 2D coordinates to 1D index
+//			int pixelIndex = y * screenWidth + x;
+//			pixels[pixelIndex] = PixelRGB(color);
+//
+//			rayIndex++;
+//		}
+//	}
+//
+//	updateTexture(pixels);
+// }
 
 void Renderer::initializeShaders() {
 	std::string rasterVert(rasterVertexShaderSource);
@@ -501,49 +501,6 @@ void Renderer::renderImagePlane() {
 	glDrawArrays(GL_TRIANGLES, 0, 6);
 }
 
-// void Renderer::generateRays(std::vector<Ray>& rays) {
-//	rays.reserve(screenWidth * screenHeight);
-//
-//	Transform savedCamTransform = cam.getSavedCamTransform();
-//	glm::vec3 origin = savedCamTransform.position;
-//
-//	// Offset each ray from top left point on ImagePlane for reference
-//	const ImagePlane& plane = cam.getImagePlane();
-//	glm::vec3 quadTopLeft = plane.topLeft();
-//
-//	// Offset each pixel to ensure ray is centered
-//	float quadWorldWidth = plane.worldSpaceWidth();
-//	float pixelWidth = quadWorldWidth / (float)screenWidth;
-//
-//	// Iterate for each pixel in image
-//	for (int x = 0; x < screenWidth; x++) {
-//
-//		// Pixel offset right
-//		glm::vec3 offsetRight = plane.transform.right() * (pixelWidth * x);
-//
-//		for (int y = 0; y < screenHeight; y++) {
-//
-//			// Pixel offset down
-//			glm::vec3 offsetDown = plane.transform.up() * (pixelWidth * y);
-//			glm::vec3 posOnImagePlane = quadTopLeft + offsetRight - offsetDown;
-//
-//			// Normalize each vector to get a field of unit vectors (each representing cast direction)
-//			glm::vec3 direction = glm::normalize(posOnImagePlane - origin);
-//
-//			// Max dir can go in any direction for Monte Carlo based anti aliasing:
-//			// let dirToCenterOfPixel = <a, b, c>
-//			//
-//			//   { (offset, a, b, c) ∈ ℝ⁴ |
-//			//   a - (pw/2) < offset < a + (pw/2),
-//			//   b - (pw/2) < offset < b + (pw/2),
-//			//   c - (pw/2) < offset < c + (pw/2) }
-//
-//			bool renderOnPlane = true;
-//			rays.push_back(Ray(renderOnPlane ? posOnImagePlane : origin, direction));
-//		}
-//	}
-// }
-
 // TODO: Move to RayTracer class
 void Renderer::setupRayBuffers(const RayTracer& tracer) {
 	cleanupRays(); // clear old buffers
@@ -614,12 +571,20 @@ void Renderer::cleanupShapes() {
 	shapeVAOs.clear();
 }
 
-void Renderer::updateTexture(const std::vector<PixelRGB>& pixels) {
+void Renderer::updateTexture(const Eigen::Matrix<int, 3, Eigen::Dynamic>& colors_matrix) {
 	std::vector<uint32_t> uint_rgb_data;
-	uint_rgb_data.reserve(pixels.size());
+	uint_rgb_data.reserve(colors_matrix.cols());
 
-	for (auto& p : pixels) {
-		uint_rgb_data.push_back(p.toInt());
+	for (int i = 0; i < colors_matrix.cols(); i++) {
+		Eigen::Vector3i color = colors_matrix.col(i);
+
+		uint8_t r = static_cast<uint8_t>(color[0]);
+		uint8_t g = static_cast<uint8_t>(color[1]);
+		uint8_t b = static_cast<uint8_t>(color[2]);
+		uint8_t a = 255;
+		uint32_t pixel = (r << 0) | (g << 8) | (b << 16) | (a << 24);
+
+		uint_rgb_data.push_back(pixel);
 	}
 
 	glBindTexture(GL_TEXTURE_2D, imagePlaneTexture);

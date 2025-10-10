@@ -1,12 +1,12 @@
 #pragma once
 
 #include "Camera.h"
-#include "PixelRGB.h"
 #include "Ray.h"
 #include "ShaderProgram.h"
 #include "Shape.h"
 #include "VAO.h"
 #include "VBO.h"
+#include <Eigen/Dense>
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
@@ -43,7 +43,7 @@ class Renderer {
 
 	// Textures
 	GLuint imagePlaneTexture;
-	void updateTexture(const std::vector<PixelRGB>& pixels);
+	void updateTexture(const Eigen::Matrix<int, 3, Eigen::Dynamic>& colors_matrix);
 	void initializeImagePlaneTexture();
 
 	// Utility

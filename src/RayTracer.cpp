@@ -93,6 +93,7 @@ void RayTracer::traceAll() {
 }
 
 void RayTracer::traceStep() {
+
 	// TODO: Parallelize across N threads
 	for (int i = 0; i < N; ++i) {
 		if (ray_steps(0, i) < 1)

@@ -189,8 +189,11 @@ void renderUI(Renderer& renderer) {
 		// tracer.cleanupRays();
 		tracer.initializeRays(renderer);
 		renderer.setupRayBuffers(tracer);
-
 		tracer.traceAll();
+		renderer.updateTexture(tracer.getRayColors());
+
+		// renderer.castRays(rays, worldObjects);
+
 		// measure("Cleanup Rays", [&] {
 		//	cleanupRays();
 		//	renderer.cleanupRays();

@@ -68,7 +68,6 @@ set(SOURCES
     src/VBO.cpp
     src/VAO.cpp
     src/Camera.cpp
-    src/PixelRGB.cpp
     src/Ray.cpp
     src/Shape.cpp
     src/RayTracer.cpp
