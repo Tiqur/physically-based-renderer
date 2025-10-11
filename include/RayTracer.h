@@ -19,7 +19,7 @@ class RayTracer {
   private:
 	int N; // Num of rays
 	int maxSteps;
-	int NUM_THREADS = 16;
+	int NUM_THREADS = 32;
 	std::atomic<bool> tracing{false}; // We want this to be atomic since it's being assigned within multiple threads
 
 	Eigen::Array<int, 1, Eigen::Dynamic> ray_steps;

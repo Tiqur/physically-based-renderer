@@ -115,7 +115,7 @@ bool Renderer::initialize() {
 	// Setup OpenGL state
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	glLineWidth(1.0f);
+	glLineWidth(2.0f);
 
 	// Initialize shaders and buffers
 	initializeShaders();
@@ -374,7 +374,13 @@ void Renderer::renderRays(const RayTracer& tracer, int rayStep) {
 	    cam.getFarPlane());
 	glm::mat4 identity = glm::mat4(1.0f);
 
+	int max_steps = tracer.getMaxSteps();
+	Eigen::Array<int, 1, Eigen::Dynamic> ray_steps = tracer.getRaySteps();
+
 	for (size_t i = 0; i < numRays; ++i) {
+		// Don't render rays unless they've been traced at least once
+		if (ray_steps[i] == max_steps)
+			continue;
 
 		size_t row = i / screenWidth;
 		size_t col = i % screenWidth;
@@ -383,7 +389,7 @@ void Renderer::renderRays(const RayTracer& tracer, int rayStep) {
 
 		// TODO
 		bool hitAnything = false;
-		glm::vec4 color = hitAnything ? glm::vec4(0.0f, 1.0f, 0.0f, 0.05f) : glm::vec4(1.0f, 1.0f, 1.0f, 0.02f);
+		glm::vec4 color = hitAnything ? glm::vec4(0.0f, 1.0f, 0.0f, 0.1f) : glm::vec4(1.0f, 1.0f, 1.0f, 0.04f);
 
 		rayVAO->bind();
 		setupRasterUniforms(identity, view, projection, color);
