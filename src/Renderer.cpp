@@ -379,6 +379,12 @@ void Renderer::renderRays(const RayTracer& tracer, int rayStep) {
 	(void)directions;
 
 	for (size_t i = 0; i < numRays; ++i) {
+
+		size_t row = i / screenWidth;
+		size_t col = i % screenWidth;
+		if (row % rayStep != 0 || col % rayStep != 0)
+			continue;
+
 		bool hitAnything = false;
 		glm::vec4 color = hitAnything ? glm::vec4(0.0f, 1.0f, 0.0f, 0.05f) : glm::vec4(1.0f, 1.0f, 1.0f, 0.02f);
 
