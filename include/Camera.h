@@ -8,7 +8,7 @@ class Camera {
   public:
 	struct MovementSettings {
 		float rotationSpeed{5.0f};
-		float moveSpeed{0.5f};
+		float moveSpeed{0.08f};
 	};
 
 	struct ProjectionSettings {
