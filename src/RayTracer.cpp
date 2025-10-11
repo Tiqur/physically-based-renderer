@@ -106,6 +106,11 @@ void RayTracer::initializeRays(Renderer& r) {
 }
 
 void RayTracer::traceAllAsync() {
+	// We don't want trace if it's already tracing
+	if (isTracing())
+		return;
+
+	tracing = true;
 
 	// Start in own separate thread so we can see it real-time
 	std::thread([this]() {
@@ -118,6 +123,8 @@ void RayTracer::traceAllAsync() {
 		for (auto& t : threads) {
 			t.join();
 		}
+
+		tracing = false;
 	}).detach();
 }
 
@@ -132,7 +139,7 @@ void RayTracer::traceChunk(int chunkIndex) {
 		for (int i = chunk.start; i < chunk.end; ++i) {
 
 			// Fake delay so I can debug
-			std::this_thread::sleep_for(std::chrono::nanoseconds(10));
+			std::this_thread::sleep_for(std::chrono::nanoseconds(1));
 
 			if (ray_steps(0, i) < 1)
 				continue;

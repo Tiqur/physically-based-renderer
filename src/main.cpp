@@ -277,7 +277,8 @@ int main() {
 		renderer.beginFrame();
 
 		measure("Update Texture", [&] {
-			renderer.updateTexture(tracer.getRayColors());
+			if (tracer.isTracing())
+				renderer.updateTexture(tracer.getRayColors());
 		});
 
 		// Render scene

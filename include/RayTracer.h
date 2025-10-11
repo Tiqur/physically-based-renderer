@@ -19,7 +19,8 @@ class RayTracer {
   private:
 	int N; // Num of rays
 	int maxSteps;
-	int NUM_THREADS = 8;
+	int NUM_THREADS = 16;
+	std::atomic<bool> tracing{false}; // We want this to be atomic since it's being assigned within multiple threads
 
 	Eigen::Array<int, 1, Eigen::Dynamic> ray_steps;
 	Eigen::Matrix<int, 3, Eigen::Dynamic> ray_colors;
@@ -54,4 +55,5 @@ class RayTracer {
 	int getNumRays() const { return N; }
 	int getMaxSteps() const { return maxSteps; }
 	int getNumThreads() const { return NUM_THREADS; }
+	int isTracing() const { return tracing; }
 };
