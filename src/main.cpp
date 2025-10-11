@@ -15,8 +15,10 @@
 #include <thread>
 #include <vector>
 
+#define MEASURE_LOGS false
+
 // TODO: Remove magic numbers
-RayTracer tracer(800 * 600, 1);
+RayTracer tracer(800 * 600, 16);
 Renderer renderer(800, 600);
 
 // void testIntersections() {
@@ -129,7 +131,8 @@ void measure(const std::string& name, auto func) {
 	auto end = std::chrono::high_resolution_clock::now();
 
 	auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-	std::cout << name << " took " << duration.count() << " ms\n";
+	if (MEASURE_LOGS)
+		std::cout << name << " took " << duration.count() << " ms\n";
 }
 
 void cleanupRays() {
@@ -189,8 +192,7 @@ void renderUI(Renderer& renderer) {
 		// tracer.cleanupRays();
 		tracer.initializeRays(renderer);
 		renderer.setupRayBuffers(tracer);
-		tracer.traceAll();
-		renderer.updateTexture(tracer.getRayColors());
+		tracer.traceAllAsync();
 
 		// renderer.castRays(rays, worldObjects);
 
@@ -273,6 +275,10 @@ int main() {
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
 		renderer.beginFrame();
+
+		measure("Update Texture", [&] {
+			renderer.updateTexture(tracer.getRayColors());
+		});
 
 		// Render scene
 		measure("Render Rays", [&] {

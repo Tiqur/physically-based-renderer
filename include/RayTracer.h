@@ -5,14 +5,21 @@
 #include <Eigen/Core>
 #include <cmath>
 #include <limits>
+#include <thread>
 #include <vector>
 
 class Renderer;
+
+struct ThreadChunk {
+	int start;
+	int end;
+};
 
 class RayTracer {
   private:
 	int N; // Num of rays
 	int maxSteps;
+	int NUM_THREADS = 8;
 
 	Eigen::Array<int, 1, Eigen::Dynamic> ray_steps;
 	Eigen::Matrix<int, 3, Eigen::Dynamic> ray_colors;
@@ -25,8 +32,13 @@ class RayTracer {
 	void initializeRays(Renderer&);
 	void resize(int numRays);
 
+	// For multithreading
+	std::vector<ThreadChunk> chunks;
+	void computeChunks();
+	void traceChunk(int chunkIndex);
+
 	// Trace
-	void traceAll();
+	void traceAllAsync();
 	void traceStep();
 
 	// Shapes
@@ -41,4 +53,5 @@ class RayTracer {
 
 	int getNumRays() const { return N; }
 	int getMaxSteps() const { return maxSteps; }
+	int getNumThreads() const { return NUM_THREADS; }
 };

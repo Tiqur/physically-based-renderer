@@ -358,8 +358,8 @@ void Renderer::renderRays(const RayTracer& tracer, int rayStep) {
 	}
 
 	size_t numRays = (size_t)tracer.getNumRays();
-	const Eigen::Matrix<float, 3, Eigen::Dynamic>& origins = tracer.getRayOrigins();
-	const Eigen::Matrix<float, 3, Eigen::Dynamic>& directions = tracer.getRayDirections();
+	// const Eigen::Matrix<float, 3, Eigen::Dynamic>& origins = tracer.getRayOrigins();
+	// const Eigen::Matrix<float, 3, Eigen::Dynamic>& directions = tracer.getRayDirections();
 
 	if (numRays == 0)
 		return;
@@ -374,10 +374,6 @@ void Renderer::renderRays(const RayTracer& tracer, int rayStep) {
 	    cam.getFarPlane());
 	glm::mat4 identity = glm::mat4(1.0f);
 
-	(void)rayStep;
-	(void)origins;
-	(void)directions;
-
 	for (size_t i = 0; i < numRays; ++i) {
 
 		size_t row = i / screenWidth;
@@ -385,6 +381,7 @@ void Renderer::renderRays(const RayTracer& tracer, int rayStep) {
 		if (row % rayStep != 0 || col % rayStep != 0)
 			continue;
 
+		// TODO
 		bool hitAnything = false;
 		glm::vec4 color = hitAnything ? glm::vec4(0.0f, 1.0f, 0.0f, 0.05f) : glm::vec4(1.0f, 1.0f, 1.0f, 0.02f);
 
@@ -392,50 +389,6 @@ void Renderer::renderRays(const RayTracer& tracer, int rayStep) {
 		setupRasterUniforms(identity, view, projection, color);
 		glDrawArrays(GL_LINES, i * 2, 2);
 	}
-
-	// for (size_t i = 0; i < numRays; ++i) {
-	//	size_t row = i / screenWidth;
-	//	size_t col = i % screenWidth;
-	//	if (row % rayStep != 0 || col % rayStep != 0)
-	//		continue;
-
-	//	// Each column is a ray (since it's 3 x N)
-	//	const Eigen::Vector3f origin = origins.col(i);
-	//	const Eigen::Vector3f direction = directions.col(i);
-
-	//	std::cout << "Ray " << i << ":\n";
-	//	std::cout << "  Origin: " << origin.transpose() << "\n";
-	//	std::cout << "  Direction: " << direction.transpose() << "\n";
-
-	//	bool hitAnything = false;
-	//	glm::vec4 color = hitAnything ? glm::vec4(0.0f, 1.0f, 0.0f, 0.05f) : glm::vec4(1.0f, 1.0f, 1.0f, 0.02f);
-
-	//	rayVAO->bind();
-	//	setupRasterUniforms(identity, view, projection, color);
-	//	glDrawArrays(GL_LINES, i * 2, 2);
-	//}
-
-	// for (size_t i = 0; i < rays.size(); i++) {
-	//	// skip rays for performance
-	//	size_t row = i / screenWidth;
-	//	size_t col = i % screenWidth;
-	//	if (row % rayStep != 0 || col % rayStep != 0)
-	//		continue;
-	//	//
-	//	bool hitAnything = false;
-	//	for (Shape* obj : worldObjects) {
-	//		if (obj->intersect(rays[i])) {
-	//			hitAnything = true;
-	//			break;
-	//		}
-	//	}
-
-	//	glm::vec4 color = hitAnything ? glm::vec4(0.0f, 1.0f, 0.0f, 0.05f) : glm::vec4(1.0f, 1.0f, 1.0f, 0.02f);
-
-	//	rayVAO->bind();
-	//	setupRasterUniforms(identity, view, projection, color);
-	//	glDrawArrays(GL_LINES, i * 2, 2);
-	//}
 }
 
 void Renderer::renderShapes(const std::vector<Shape*>& shapes) {

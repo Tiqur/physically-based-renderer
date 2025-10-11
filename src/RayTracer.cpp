@@ -1,4 +1,5 @@
 #include "RayTracer.h"
+#include <chrono>
 #include <iostream>
 
 RayTracer::RayTracer(int numRays, int maxSteps) : N(numRays), maxSteps(maxSteps) {
@@ -9,6 +10,8 @@ RayTracer::RayTracer(int numRays, int maxSteps) : N(numRays), maxSteps(maxSteps)
 
 	ray_colors.setZero();
 	ray_steps.setConstant(maxSteps);
+
+	computeChunks();
 }
 
 // If user changes window size
@@ -21,6 +24,22 @@ void RayTracer::resize(int numRays) {
 
 	ray_colors.setZero();
 	ray_steps.setConstant(maxSteps);
+
+	// We need to do this again since window may have more pixels/rays
+	computeChunks();
+}
+
+void RayTracer::computeChunks() {
+	chunks.clear();
+	int raysPerThread = N / NUM_THREADS;
+	int remainder = N % NUM_THREADS;
+
+	int start = 0;
+	for (int i = 0; i < NUM_THREADS; ++i) {
+		int chunkSize = raysPerThread + (i < remainder ? 1 : 0);
+		chunks.push_back({start, start + chunkSize});
+		start += chunkSize;
+	}
 }
 
 void RayTracer::initializeRays(Renderer& r) {
@@ -86,26 +105,70 @@ void RayTracer::initializeRays(Renderer& r) {
 	ray_colors.setZero();
 }
 
-void RayTracer::traceAll() {
-	for (int step = 0; step < maxSteps; ++step) {
-		traceStep();
+void RayTracer::traceAllAsync() {
+
+	// Start in own separate thread so we can see it real-time
+	std::thread([this]() {
+		std::vector<std::thread> threads;
+
+		for (int i = 0; i < NUM_THREADS; ++i) {
+			threads.emplace_back(&RayTracer::traceChunk, this, i);
+		}
+
+		for (auto& t : threads) {
+			t.join();
+		}
+	}).detach();
+}
+
+void RayTracer::traceChunk(int chunkIndex) {
+	const ThreadChunk& chunk = chunks[chunkIndex];
+
+	// Process rays until all are done
+	bool anyActive = true;
+	while (anyActive) {
+		anyActive = false;
+
+		for (int i = chunk.start; i < chunk.end; ++i) {
+
+			// Fake delay so I can debug
+			std::this_thread::sleep_for(std::chrono::nanoseconds(10));
+
+			if (ray_steps(0, i) < 1)
+				continue;
+
+			anyActive = true;
+			ray_steps(0, i)--;
+
+			// Update debug ray colors
+			int color = (chunkIndex % 2 == 0) ? 100 : 255;
+			ray_colors(0, i) = color;
+			ray_colors(1, i) = color;
+			ray_colors(2, i) = color;
+
+			// TODO: Intersect with all objects in scene
+		}
 	}
 }
 
 void RayTracer::traceStep() {
+	// std::vector<std::thread> threads;
 
-	// TODO: Parallelize across N threads
-	for (int i = 0; i < N; ++i) {
-		if (ray_steps(0, i) < 1)
-			continue; // inactive ray
-		ray_steps(0, i)--;
-		std::cout << "Tracing ray " << i << " step " << ray_steps(0, i) << "\n";
+	// for (int i = 0; i < NUM_THREADS; ++i) {
+	//	threads.emplace_back([this, i]() {
+	//		const ThreadChunk& chunk = chunks[i];
+	//		for (int j = chunk.start; j < chunk.end; ++j) {
+	//			if (ray_steps(0, j) < 1)
+	//				continue;
 
-		// TODO: Add intersections here
-	}
-}
+	//			ray_steps(0, j)--;
 
-void RayTracer::intersectSphere(const Sphere& sphere) {
-	(void)sphere;
-	return;
+	//			// TODO: Intersect with all objects
+	//		}
+	//	});
+	//}
+
+	// for (auto& t : threads) {
+	//	t.join();
+	// }
 }
