@@ -2,62 +2,27 @@
 
 Camera::Camera() = default;
 
-float Camera::getFov() const {
-	return projection.fov;
-}
+// Getters
+float Camera::getFov() const { return projection.fov; }
+float Camera::getNearPlane() const { return projection.nearPlane; }
+float Camera::getFarPlane() const { return projection.farPlane; }
+glm::vec3 Camera::getCamPos() const { return cam.position; }
+float Camera::getCamYaw() const { return cam.yaw; }
+float Camera::getCamPitch() const { return cam.pitch; }
+float Camera::getMoveSpeed() const { return movement.moveSpeed; }
+glm::vec3 Camera::getGhostPos() const { return ghostQuad.transform.position; }
+float Camera::getGhostYaw() const { return ghostQuad.transform.yaw; }
+float Camera::getGhostPitch() const { return ghostQuad.transform.pitch; }
+bool Camera::getGhostMode() const { return ghostMode; }
+const ImagePlane Camera::getImagePlane() const { return ghostQuad; }
+Transform Camera::getCamTransform() const { return cam; }
+Transform Camera::getSavedCamTransform() const { return savedCam; }
 
-float Camera::getNearPlane() const {
-	return projection.nearPlane;
-}
-
-float Camera::getFarPlane() const {
-	return projection.farPlane;
-}
-
-glm::vec3 Camera::getCamPos() const {
-	return cam.position;
-}
-
-float Camera::getCamYaw() const {
-	return cam.yaw;
-}
-
-float Camera::getCamPitch() const {
-	return cam.pitch;
-}
-
-float Camera::getMoveSpeed() const {
-	return movement.moveSpeed;
-}
-
-glm::vec3 Camera::getGhostPos() const {
-	return ghostQuad.transform.position;
-}
-
-float Camera::getGhostYaw() const {
-	return ghostQuad.transform.yaw;
-}
-
-float Camera::getGhostPitch() const {
-	return ghostQuad.transform.pitch;
-}
-
-bool Camera::getGhostMode() const {
-	return ghostMode;
-}
-
-void Camera::updateImagePlane(float screenWidth, float screenHeight) {
-	float aspectRatio = screenWidth / screenHeight;
-	float planeHeight = 2.0f * projection.nearPlane * tan(glm::radians(getFov() / 2.0f));
-	float planeWidth = planeHeight * aspectRatio;
-
-	ghostQuad.setWidth(planeWidth);
-	ghostQuad.setHeight(planeHeight);
-}
-
-const ImagePlane Camera::getImagePlane() const {
-	return ghostQuad;
-}
+// Setters
+void Camera::setMoveSpeed(float newSpeed) { movement.moveSpeed = newSpeed; }
+void Camera::setGhostQuadTransform(const Transform& newTransform) { ghostQuad.transform = newTransform; }
+void Camera::setCamYaw(float newYaw) { cam.yaw = newYaw; }
+void Camera::setCamPitch(float newPitch) { cam.pitch = newPitch; }
 
 void Camera::setFov(float newFov) {
 	if (newFov < 10.0f)
@@ -67,12 +32,21 @@ void Camera::setFov(float newFov) {
 	projection.fov = newFov;
 }
 
-void Camera::setMoveSpeed(float newSpeed) {
-	movement.moveSpeed = newSpeed;
+void Camera::setCamPos(glm::vec3 newPos) {
+	cam.position = newPos;
+	if (!ghostMode) {
+		setGhostQuadTransform(cam);
+	}
 }
 
-void Camera::setGhostQuadTransform(const Transform& newTransform) {
-	ghostQuad.transform = newTransform;
+// Other
+void Camera::updateImagePlane(float screenWidth, float screenHeight) {
+	float aspectRatio = screenWidth / screenHeight;
+	float planeHeight = 2.0f * projection.nearPlane * tan(glm::radians(getFov() / 2.0f));
+	float planeWidth = planeHeight * aspectRatio;
+
+	ghostQuad.setWidth(planeWidth);
+	ghostQuad.setHeight(planeHeight);
 }
 
 void Camera::toggleGhostMode() {
@@ -90,27 +64,4 @@ void Camera::toggleGhostMode() {
 		cam = savedCam;
 	}
 	ghostMode = !ghostMode;
-}
-
-void Camera::setCamPos(glm::vec3 newPos) {
-	cam.position = newPos;
-	if (!ghostMode) {
-		setGhostQuadTransform(cam);
-	}
-}
-
-void Camera::setCamYaw(float newYaw) {
-	cam.yaw = newYaw;
-}
-
-void Camera::setCamPitch(float newPitch) {
-	cam.pitch = newPitch;
-}
-
-Transform Camera::getCamTransform() const {
-	return cam;
-}
-
-Transform Camera::getSavedCamTransform() const {
-	return savedCam;
 }
