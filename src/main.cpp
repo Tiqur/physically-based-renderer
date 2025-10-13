@@ -192,7 +192,7 @@ void renderUI(Renderer& renderer) {
 		// tracer.cleanupRays();
 		tracer.initializeRays(renderer);
 		renderer.setupRayBuffers(tracer);
-		tracer.traceAllAsync();
+		tracer.traceAllAsync(worldObjects);
 
 		// renderer.castRays(rays, worldObjects);
 

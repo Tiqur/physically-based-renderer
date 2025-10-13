@@ -78,18 +78,3 @@ Sphere::Sphere(float radius, int subdivisions, glm::vec3 center) {
 std::vector<float> Sphere::getVertices() const {
     return vertices;
 }
-
-bool Sphere::intersect(Ray ray) const {
-    
-    glm::vec3 L = ray.origin - this->position;
-    
-    float a = glm::dot(ray.direction, ray.direction);
-    float b = 2.0f * glm::dot(ray.direction, L);
-    float c = glm::dot(L, L) - radius * radius;
-    
-    float discriminant = b * b - 4 * a * c;
-    
-    return discriminant >= 0;
-}
-
-

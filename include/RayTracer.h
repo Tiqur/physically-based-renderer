@@ -36,10 +36,10 @@ class RayTracer {
 	// For multithreading
 	std::vector<ThreadChunk> chunks;
 	void computeChunks();
-	void traceChunk(int chunkIndex);
+	void traceChunk(int chunkIndex, const std::vector<Shape*>& worldObjects);
 
 	// Trace
-	void traceAllAsync();
+	void traceAllAsync(const std::vector<Shape*>& worldObjects);
 	void traceStep();
 
 	// Shapes
@@ -56,4 +56,7 @@ class RayTracer {
 	int getMaxSteps() const { return maxSteps; }
 	int getNumThreads() const { return NUM_THREADS; }
 	int isTracing() const { return tracing; }
+
+	// Intersections
+	void intersectSphere(const Sphere&, int chunkIndex);
 };

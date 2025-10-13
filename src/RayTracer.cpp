@@ -105,7 +105,7 @@ void RayTracer::initializeRays(Renderer& r) {
 	ray_colors.setZero();
 }
 
-void RayTracer::traceAllAsync() {
+void RayTracer::traceAllAsync(const std::vector<Shape*>& worldObjects) {
 	// We don't want trace if it's already tracing
 	if (isTracing())
 		return;
@@ -113,11 +113,11 @@ void RayTracer::traceAllAsync() {
 	tracing = true;
 
 	// Start in own separate thread so we can see it real-time
-	std::thread([this]() {
+	std::thread([this, &worldObjects]() {
 		std::vector<std::thread> threads;
 
 		for (int i = 0; i < NUM_THREADS; ++i) {
-			threads.emplace_back(&RayTracer::traceChunk, this, i);
+			threads.emplace_back(&RayTracer::traceChunk, this, i, worldObjects);
 		}
 
 		for (auto& t : threads) {
@@ -128,32 +128,13 @@ void RayTracer::traceAllAsync() {
 	}).detach();
 }
 
-void RayTracer::traceChunk(int chunkIndex) {
-	const ThreadChunk& chunk = chunks[chunkIndex];
+void RayTracer::traceChunk(int chunkIndex, const std::vector<Shape*>& worldObjects) {
+	// const ThreadChunk& chunk = chunks[chunkIndex];
 
-	// Process rays until all are done
-	bool anyActive = true;
-	while (anyActive) {
-		anyActive = false;
-
-		for (int i = chunk.start; i < chunk.end; ++i) {
-
-			// Fake delay so I can debug
-			std::this_thread::sleep_for(std::chrono::nanoseconds(1));
-
-			if (ray_steps(0, i) < 1)
-				continue;
-
-			anyActive = true;
-			ray_steps(0, i)--;
-
-			// Update debug ray colors
-			int color = (chunkIndex % 2 == 0) ? 100 : 255;
-			ray_colors(0, i) = color;
-			ray_colors(1, i) = color;
-			ray_colors(2, i) = color;
-
-			// TODO: Intersect with all objects in scene
+	for (Shape* object : worldObjects) {
+		// Check if Sphere class (I wonder if there's a better way to do this?)
+		if (const Sphere* sphere = dynamic_cast<const Sphere*>(object)) {
+			intersectSphere(*sphere, chunkIndex);
 		}
 	}
 }
@@ -178,4 +159,39 @@ void RayTracer::traceStep() {
 	// for (auto& t : threads) {
 	//	t.join();
 	// }
+}
+
+// TODO: Vectorize / use matrix math instead of per ray calculations
+void RayTracer::intersectSphere(const Sphere& sphere, int chunkIndex) {
+	const ThreadChunk& chunk = chunks[chunkIndex];
+
+	Eigen::Vector3f sphere_center(sphere.position.x, sphere.position.y, sphere.position.z);
+	float sphere_radius_sq = sphere.radius * sphere.radius;
+
+	for (int i = chunk.start; i < chunk.end; ++i) {
+		if (ray_steps(0, i) == 0) {
+			continue;
+		}
+
+		// Fake delay so I can debug
+		std::this_thread::sleep_for(std::chrono::nanoseconds(1));
+
+		Eigen::Vector3f oc = ray_origins.col(i) - sphere_center;
+		float a = ray_directions.col(i).squaredNorm();
+		float half_b = ray_directions.col(i).dot(oc);
+		float c = oc.squaredNorm() - sphere_radius_sq;
+		float discriminant = half_b * half_b - a * c;
+
+		if (discriminant > 0) {
+			float root = std::sqrt(discriminant);
+			float t = (-half_b - root) / a;
+
+			// ONLY CHECK IN FRONT OF CAMERA
+			if (t > 0.001f) {
+				int color = chunkIndex % 2 == 0 ? 255 : 120;
+				ray_colors.col(i) << color, color, color;
+				ray_steps(0, i) = 0;
+			}
+		}
+	}
 }

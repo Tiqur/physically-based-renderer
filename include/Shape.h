@@ -15,7 +15,5 @@ class Shape {
 
 	virtual std::vector<float> getVertices() const = 0;
 
-	virtual bool intersect(Ray) const;
-
 	glm::mat4 getModelMatrix() const;
 };
