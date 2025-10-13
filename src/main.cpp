@@ -183,32 +183,10 @@ void renderUI(Renderer& renderer) {
 		tracer.traceStep();
 	}
 	if (ImGui::Button("Render")) {
-		// tracer.cleanupRays();
+		renderer.cleanupRays();
 		tracer.initializeRays(renderer);
 		renderer.setupRayBuffers(tracer);
 		tracer.traceAllAsync(worldObjects);
-
-		// renderer.castRays(rays, worldObjects);
-
-		// measure("Cleanup Rays", [&] {
-		//	cleanupRays();
-		//	renderer.cleanupRays();
-		// });
-
-		// measure("Generate Rays", [&] {
-		//	renderer.generateRays(rays);
-		// });
-
-		// measure("Setup Buffers", [&] {
-		//	renderer.setupRayBuffers(rays);
-		// });
-
-		// measure("Cast Rays", [&] {
-		//	renderer.castRays(rays, worldObjects);
-		// });
-
-		// std::thread t1(&Renderer::castRays, &renderer, std::ref(rays), std::ref(worldObjects));
-		// std::cout << "Ray Count: " << rays.size() << std::endl;
 	}
 
 	ImGui::End();
@@ -218,7 +196,6 @@ void renderUI(Renderer& renderer) {
 	Camera& cam = renderer.getCamera();
 	if (ImGui::Button(cam.getGhostMode() ? "Disable Ghost" : "Enable Ghost")) {
 		cam.toggleGhostMode();
-		renderer.cleanupRays();
 	}
 
 	ImGui::End();

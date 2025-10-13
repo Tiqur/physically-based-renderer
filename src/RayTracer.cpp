@@ -43,6 +43,7 @@ void RayTracer::computeChunks() {
 }
 
 void RayTracer::initializeRays(Renderer& r) {
+	ray_steps.setConstant(maxSteps);
 
 	Camera& cam = r.getCamera();
 	Transform savedCamTransform = cam.getSavedCamTransform();
