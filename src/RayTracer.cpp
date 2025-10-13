@@ -188,7 +188,8 @@ void RayTracer::intersectSphere(const Sphere& sphere, int chunkIndex) {
 
 			// ONLY CHECK IN FRONT OF CAMERA
 			if (t > 0.001f) {
-				int color = chunkIndex % 2 == 0 ? 255 : 120;
+				// int color = chunkIndex % 2 == 0 ? 255 : 120;
+				int color = (sphere.radius == 1.0f) ? 255 : 120;
 				ray_colors.col(i) << color, color, color;
 				ray_steps(0, i) = 0;
 			}

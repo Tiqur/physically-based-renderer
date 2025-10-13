@@ -135,13 +135,6 @@ void measure(const std::string& name, auto func) {
 		std::cout << name << " took " << duration.count() << " ms\n";
 }
 
-void cleanupRays() {
-	// for (Ray* ray : rays) {
-	//	delete ray;
-	// }
-	// rays.clear();
-}
-
 void cleanupScene() {
 	for (Shape* shape : worldObjects) {
 		delete shape;
@@ -154,7 +147,10 @@ void setupScene() {
 	// cube->position = glm::vec3(0.0f, 0.0f, -10.0f);
 	// worldObjects.push_back(cube);
 
-	Sphere* sphere = new Sphere(1.0f, 4, glm::vec3(0.0f, 0.0f, -5.0f));
+	Sphere* sphere;
+	sphere = new Sphere(0.8f, 4, glm::vec3(0.0f, 0.0f, -10.0f));
+	worldObjects.push_back(sphere);
+	sphere = new Sphere(1.0f, 4, glm::vec3(0.0f, 0.0f, -5.0f));
 	worldObjects.push_back(sphere);
 
 	// Square* square = new Square();
@@ -177,7 +173,6 @@ void renderUI(Renderer& renderer) {
 	ImGui::Button("Load/Select Scene");
 
 	if (ImGui::Button("Reset")) {
-		cleanupRays();
 		renderer.cleanupRays();
 	}
 
@@ -188,7 +183,6 @@ void renderUI(Renderer& renderer) {
 		tracer.traceStep();
 	}
 	if (ImGui::Button("Render")) {
-
 		// tracer.cleanupRays();
 		tracer.initializeRays(renderer);
 		renderer.setupRayBuffers(tracer);
@@ -224,7 +218,6 @@ void renderUI(Renderer& renderer) {
 	Camera& cam = renderer.getCamera();
 	if (ImGui::Button(cam.getGhostMode() ? "Disable Ghost" : "Enable Ghost")) {
 		cam.toggleGhostMode();
-		cleanupRays();
 		renderer.cleanupRays();
 	}
 
@@ -308,7 +301,6 @@ int main() {
 		renderer.endFrame();
 	}
 
-	cleanupRays();
 	cleanupScene();
 
 	ImGui_ImplOpenGL3_Shutdown();
