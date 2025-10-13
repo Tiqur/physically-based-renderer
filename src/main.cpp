@@ -148,9 +148,11 @@ void setupScene() {
 	// worldObjects.push_back(cube);
 
 	Sphere* sphere;
-	sphere = new Sphere(0.8f, 4, glm::vec3(0.0f, 0.0f, -10.0f));
+	sphere = new Sphere(4.0f, 4, glm::vec3(0.0f, 2.0f, -15.0f));
 	worldObjects.push_back(sphere);
-	sphere = new Sphere(1.0f, 4, glm::vec3(0.0f, 0.0f, -5.0f));
+	sphere = new Sphere(1.0f, 4, glm::vec3(0.0f, 1.0f, -10.0f));
+	worldObjects.push_back(sphere);
+	sphere = new Sphere(0.4f, 4, glm::vec3(0.0f, 0.0f, -5.0f));
 	worldObjects.push_back(sphere);
 
 	// Square* square = new Square();

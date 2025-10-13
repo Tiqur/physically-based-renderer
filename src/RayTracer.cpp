@@ -1,15 +1,14 @@
 #include "RayTracer.h"
 #include <chrono>
 #include <iostream>
+#include <limits>
 
 RayTracer::RayTracer(int numRays, int maxSteps) : N(numRays), maxSteps(maxSteps) {
 	ray_origins.resize(3, N);
 	ray_directions.resize(3, N);
 	ray_colors.resize(3, N);
 	ray_steps.resize(1, N);
-
-	ray_colors.setZero();
-	ray_steps.setConstant(maxSteps);
+	t_distance.resize(1, N);
 
 	computeChunks();
 }
@@ -21,9 +20,7 @@ void RayTracer::resize(int numRays) {
 	ray_directions.resize(3, N);
 	ray_colors.resize(3, N);
 	ray_steps.resize(1, N);
-
-	ray_colors.setZero();
-	ray_steps.setConstant(maxSteps);
+	t_distance.resize(1, N);
 
 	// We need to do this again since window may have more pixels/rays
 	computeChunks();
@@ -43,7 +40,9 @@ void RayTracer::computeChunks() {
 }
 
 void RayTracer::initializeRays(Renderer& r) {
+	ray_colors.setZero();
 	ray_steps.setConstant(maxSteps);
+	t_distance.setConstant(std::numeric_limits<float>::infinity()); // We use infinity so that ANY object hit will be closer
 
 	Camera& cam = r.getCamera();
 	Transform savedCamTransform = cam.getSavedCamTransform();
@@ -170,9 +169,9 @@ void RayTracer::intersectSphere(const Sphere& sphere, int chunkIndex) {
 	float sphere_radius_sq = sphere.radius * sphere.radius;
 
 	for (int i = chunk.start; i < chunk.end; ++i) {
-		if (ray_steps(0, i) == 0) {
-			continue;
-		}
+		// if (ray_steps(0, i) == 0) {
+		//  continue;
+		// }
 
 		// Fake delay so I can debug
 		std::this_thread::sleep_for(std::chrono::nanoseconds(1));
@@ -185,12 +184,14 @@ void RayTracer::intersectSphere(const Sphere& sphere, int chunkIndex) {
 
 		if (discriminant > 0) {
 			float root = std::sqrt(discriminant);
-			float t = (-half_b - root) / a;
+			float t = (-half_b - root) / a; // Distance from ray origin
 
-			// ONLY CHECK IN FRONT OF CAMERA
-			if (t > 0.001f) {
+			// If hit is in front of camera AND If hit object behind another, we don't care
+			if (t > 0.001f && t < t_distance(i)) {
+				t_distance(i) = t; // Update closest hit
+
 				// int color = chunkIndex % 2 == 0 ? 255 : 120;
-				int color = (sphere.radius == 1.0f) ? 255 : 120;
+				int color = 255 - (sphere.radius * 50);
 				ray_colors.col(i) << color, color, color;
 				ray_steps(0, i) = 0;
 			}

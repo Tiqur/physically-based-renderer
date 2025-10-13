@@ -22,10 +22,11 @@ class RayTracer {
 	int NUM_THREADS = 32;
 	std::atomic<bool> tracing{false}; // We want this to be atomic since it's being assigned within multiple threads
 
-	Eigen::Array<int, 1, Eigen::Dynamic> ray_steps;
-	Eigen::Matrix<int, 3, Eigen::Dynamic> ray_colors;
-	Eigen::Matrix<float, 3, Eigen::Dynamic> ray_origins;
-	Eigen::Matrix<float, 3, Eigen::Dynamic> ray_directions;
+	Eigen::Array<int, 1, Eigen::Dynamic> ray_steps;         // Lifecycle of each ray
+	Eigen::Matrix<int, 3, Eigen::Dynamic> ray_colors;       // Final color to be rendered on ImagePlane texture
+	Eigen::Matrix<float, 3, Eigen::Dynamic> ray_origins;    // Position of each ray
+	Eigen::Matrix<float, 3, Eigen::Dynamic> ray_directions; // Direction of each ray (normalized)
+	Eigen::Matrix<float, 1, Eigen::Dynamic> t_distance;     // Tracks closest hit (prevents rendering mistakes due to execution order)
 
   public:
 	// Init
