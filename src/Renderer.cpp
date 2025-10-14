@@ -606,11 +606,8 @@ void Renderer::framebufferSizeCallback(GLFWwindow* window, int width, int height
 		instance->setDimensions(width, height);
 
 		// Resize tracer
-		// TODO: Doing all this inside resize callback makes it lag when resizing window
 		if (instance->tracerPtr) {
 			instance->tracerPtr->resize(width * height);
-			instance->tracerPtr->initializeRays(*instance);
-			instance->setupRayBuffers(*instance->tracerPtr);
 		}
 	}
 }
