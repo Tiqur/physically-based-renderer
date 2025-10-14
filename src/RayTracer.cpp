@@ -174,7 +174,7 @@ void RayTracer::intersectSphere(const Sphere& sphere, int chunkIndex) {
 		// }
 
 		// Fake delay so I can debug
-		std::this_thread::sleep_for(std::chrono::nanoseconds(1));
+		// std::this_thread::sleep_for(std::chrono::nanoseconds(1));
 
 		Eigen::Vector3f oc = ray_origins.col(i) - sphere_center;
 		float a = ray_directions.col(i).squaredNorm();

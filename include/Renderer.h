@@ -2,6 +2,7 @@
 
 #include "Camera.h"
 #include "Ray.h"
+#include "RayTracer.h"
 #include "ShaderProgram.h"
 #include "Shape.h"
 #include "VAO.h"
@@ -22,6 +23,7 @@ class Renderer {
 
 	bool initialize();
 	void setupCallbacks(GLFWwindow* window);
+	void setTracer(RayTracer* tracer) { tracerPtr = tracer; }
 
 	// Rendering
 	void beginFrame();
@@ -65,6 +67,7 @@ class Renderer {
 	int screenWidth;
 	int screenHeight;
 	Camera cam;
+	RayTracer* tracerPtr = nullptr;
 
 	// Shaders
 	std::unique_ptr<ShaderProgram> rasterProgram;

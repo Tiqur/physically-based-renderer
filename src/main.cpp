@@ -215,6 +215,9 @@ int main() {
 		return -1;
 	}
 
+	// We need this for resize callback
+	renderer.setTracer(&tracer);
+
 	std::cout << "Initializing ImGui backends..." << std::endl;
 	if (!ImGui_ImplGlfw_InitForOpenGL(renderer.getWindow(), true)) {
 		std::cerr << "Failed to initialize ImGui GLFW backend!" << std::endl;
@@ -249,8 +252,8 @@ int main() {
 		renderer.beginFrame();
 
 		measure("Update Texture", [&] {
-			if (tracer.isTracing())
-				renderer.updateTexture(tracer.getRayColors());
+			// if (tracer.isTracing())
+			renderer.updateTexture(tracer.getRayColors());
 		});
 
 		// Render scene
