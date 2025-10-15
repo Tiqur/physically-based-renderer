@@ -190,9 +190,11 @@ void RayTracer::intersectSphere(const Sphere& sphere, int chunkIndex) {
 			if (t > 0.001f && t < t_distance(i)) {
 				t_distance(i) = t; // Update closest hit
 
-				// int color = chunkIndex % 2 == 0 ? 255 : 120;
-				int color = 255 - (sphere.radius * 50);
-				ray_colors.col(i) << color, color, color;
+				Eigen::Vector3f hit_point = ray_origins.col(i) + t * ray_directions.col(i);
+				Eigen::Vector3f N = (hit_point - sphere_center).normalized();
+				Eigen::Vector3f color = (N + Eigen::Vector3f::Ones()) * 0.5f * 255.0f;
+				ray_colors.col(i) << color[0], color[1], color[2];
+
 				ray_steps(0, i) = 0;
 			}
 		}
