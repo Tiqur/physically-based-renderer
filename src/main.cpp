@@ -16,6 +16,7 @@
 #include <vector>
 
 #define MEASURE_LOGS false
+bool renderToImagePlane = false;
 
 // TODO: Remove magic numbers
 RayTracer tracer(800 * 600, 16);
@@ -148,11 +149,11 @@ void setupScene() {
 	// worldObjects.push_back(cube);
 
 	Sphere* sphere;
-	sphere = new Sphere(4.0f, 4, glm::vec3(0.0f, 2.0f, -15.0f));
+	sphere = new Sphere(0.4f, 4, glm::vec3(0.0f, 0.0f, -5.0f));
 	worldObjects.push_back(sphere);
 	sphere = new Sphere(1.0f, 4, glm::vec3(0.0f, 1.0f, -10.0f));
 	worldObjects.push_back(sphere);
-	sphere = new Sphere(0.4f, 4, glm::vec3(0.0f, 0.0f, -5.0f));
+	sphere = new Sphere(4.0f, 4, glm::vec3(0.0f, 2.0f, -15.0f));
 	worldObjects.push_back(sphere);
 
 	// Square* square = new Square();
@@ -175,6 +176,7 @@ void renderUI(Renderer& renderer) {
 	ImGui::Button("Load/Select Scene");
 
 	if (ImGui::Button("Reset")) {
+		renderToImagePlane = false;
 		renderer.cleanupRays();
 	}
 
@@ -189,6 +191,7 @@ void renderUI(Renderer& renderer) {
 		tracer.initializeRays(renderer);
 		renderer.setupRayBuffers(tracer);
 		tracer.traceAllAsync(worldObjects);
+		renderToImagePlane = true;
 	}
 
 	ImGui::End();
@@ -251,25 +254,13 @@ int main() {
 		ImGui::NewFrame();
 		renderer.beginFrame();
 
-		measure("Update Texture", [&] {
-			// if (tracer.isTracing())
-			renderer.updateTexture(tracer.getRayColors());
-		});
+		renderer.updateTexture(tracer.getRayColors());
+		renderer.renderRays(tracer, rayStep);
+		renderer.renderShapes(worldObjects);
+		renderer.renderFrustrum();
 
-		// Render scene
-		measure("Render Rays", [&] {
-			renderer.renderRays(tracer, rayStep);
-		});
-
-		measure("Render Shapes", [&] {
-			renderer.renderShapes(worldObjects);
-		});
-		measure("Render Frustrum", [&] {
-			renderer.renderFrustrum();
-		});
-		measure("Render ImagePlane", [&] {
+		if (renderToImagePlane)
 			renderer.renderImagePlane();
-		});
 
 		// Render UI
 		renderUI(renderer);
