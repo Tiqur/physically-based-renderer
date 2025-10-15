@@ -156,8 +156,13 @@ void setupScene() {
 	sphere = new Sphere(4.0f, 4, glm::vec3(0.0f, 2.0f, -15.0f));
 	worldObjects.push_back(sphere);
 
-	// Square* square = new Square();
-	// square->position = glm::vec3(0.0f, 0.0f, -5.0f);
+	// "Floor"
+	float radius = (float)(2 << 12);
+	sphere = new Sphere(radius, 6, glm::vec3(0.0f, -radius - 1.0f, -5.0f));
+	worldObjects.push_back(sphere);
+
+	// float planeSize = 512.0f;
+	// Square* square = new Square(glm::vec3(planeSize, -1.0f, -planeSize), glm::vec3(-planeSize, -1.0f, -planeSize), glm::vec3(planeSize, -1.0f, planeSize));
 	// worldObjects.push_back(square);
 
 	// for (int i = 0; i < 32; i++) {

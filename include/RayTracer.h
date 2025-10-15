@@ -2,6 +2,7 @@
 
 #include "Renderer.h"
 #include "Sphere.h"
+#include "Square.h"
 #include <Eigen/Core>
 #include <cmath>
 #include <limits>
@@ -44,7 +45,7 @@ class RayTracer {
 	void traceStep();
 
 	// Shapes
-	void intersectSphere(const Sphere&);
+	// void intersectSphere(const Sphere&);
 	// void intersectTriangle();
 
 	// Getters
@@ -60,4 +61,5 @@ class RayTracer {
 
 	// Intersections
 	void intersectSphere(const Sphere&, int chunkIndex);
+	void intersectSquare(const Square&, int chunkIndex);
 };

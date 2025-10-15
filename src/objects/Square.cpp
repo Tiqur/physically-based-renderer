@@ -1,21 +1,17 @@
 #include "Square.h"
 
-Square::Square(float size, glm::vec3 center) {
-    float halfSize = size / 2.0f;
-    glm::vec3 v0 = glm::vec3(center.x - halfSize, center.y - halfSize, center.z);
-    glm::vec3 v1 = glm::vec3(center.x + halfSize, center.y - halfSize, center.z);
-    glm::vec3 v2 = glm::vec3(center.x + halfSize, center.y + halfSize, center.z);
-    glm::vec3 v3 = glm::vec3(center.x - halfSize, center.y + halfSize, center.z);
+Square::Square(glm::vec3 p0, glm::vec3 p1, glm::vec3 p2) {
+    glm::vec3 p3 = p1 + (p2 - p0);
 
     // First triangle
-    vertices.push_back(v0.x); vertices.push_back(v0.y); vertices.push_back(v0.z);
-    vertices.push_back(v1.x); vertices.push_back(v1.y); vertices.push_back(v1.z);
-    vertices.push_back(v2.x); vertices.push_back(v2.y); vertices.push_back(v2.z);
+    vertices.push_back(p0.x); vertices.push_back(p0.y); vertices.push_back(p0.z);
+    vertices.push_back(p1.x); vertices.push_back(p1.y); vertices.push_back(p1.z);
+    vertices.push_back(p2.x); vertices.push_back(p2.y); vertices.push_back(p2.z);
 
     // Second triangle
-    vertices.push_back(v0.x); vertices.push_back(v0.y); vertices.push_back(v0.z);
-    vertices.push_back(v2.x); vertices.push_back(v2.y); vertices.push_back(v2.z);
-    vertices.push_back(v3.x); vertices.push_back(v3.y); vertices.push_back(v3.z);
+    vertices.push_back(p1.x); vertices.push_back(p1.y); vertices.push_back(p1.z);
+    vertices.push_back(p3.x); vertices.push_back(p3.y); vertices.push_back(p3.z);
+    vertices.push_back(p2.x); vertices.push_back(p2.y); vertices.push_back(p2.z);
 }
 
 std::vector<float> Square::getVertices() const {

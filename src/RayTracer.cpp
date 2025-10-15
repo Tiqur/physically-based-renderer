@@ -136,6 +136,9 @@ void RayTracer::traceChunk(int chunkIndex, const std::vector<Shape*>& worldObjec
 		if (const Sphere* sphere = dynamic_cast<const Sphere*>(object)) {
 			intersectSphere(*sphere, chunkIndex);
 		}
+		// if (const Square* square = dynamic_cast<const Square*>(object)) {
+		//	intersectSquare(*square, chunkIndex);
+		// }
 	}
 }
 
