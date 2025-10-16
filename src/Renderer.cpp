@@ -205,54 +205,6 @@ void Renderer::renderFrustrum() {
 	glDrawArrays(GL_LINES, 0, 24);
 }
 
-// void Renderer::castRays(std::vector<Ray>& rays, std::vector<Shape*>& worldObjects) {
-//
-//	// Do each chunk on separate thread
-//	// int chunks = 4;
-//	// Eigen::Matrix<float, 3, 10> ray_origins;
-//	// Eigen::Matrix<float, 3, 10> ray_directions;
-//
-//	std::vector<PixelRGB> pixels(screenWidth * screenHeight);
-//
-//	// Initialize all pixels to background color
-//	for (int i = 0; i < screenWidth * screenHeight; i++) {
-//		pixels[i] = PixelRGB(glm::vec3(0.0f, 0.0f, 0.0f));
-//	}
-//
-//	// Check for intersections
-//	size_t rayIndex = 0;
-//	for (int x = 0; x < screenWidth; x++) {
-//		for (int y = 0; y < screenHeight; y++) {
-//
-//			if (rayIndex >= rays.size())
-//				break;
-//
-//			bool hitAnything = false;
-//			for (Shape* obj : worldObjects) {
-//				if (obj->intersect(rays[rayIndex])) {
-//					hitAnything = true;
-//					break;
-//				}
-//			}
-//
-//			// Simple skybox
-//			float rayY = rays[rayIndex].direction.y;
-//			float t = 0.8f * rayY + 1.0f;
-//			glm::vec3 sky_color = glm::vec3(1.0f, 1.0f, 1.0f) * (1.0f - t) + glm::vec3(0.5f, 0.7f, 1.0f) * t;
-//
-//			glm::vec4 color = hitAnything ? glm::vec4(0.0f, 1.0f, 0.0f, 1.0f) : glm::vec4(sky_color, 1.0f);
-//
-//			// Convert 2D coordinates to 1D index
-//			int pixelIndex = y * screenWidth + x;
-//			pixels[pixelIndex] = PixelRGB(color);
-//
-//			rayIndex++;
-//		}
-//	}
-//
-//	updateTexture(pixels);
-// }
-
 void Renderer::initializeShaders() {
 	std::string rasterVert(rasterVertexShaderSource);
 	std::string rasterFrag(rasterFragmentShaderSource);
@@ -358,8 +310,6 @@ void Renderer::renderRays(const RayTracer& tracer, int rayStep) {
 	}
 
 	size_t numRays = (size_t)tracer.getNumRays();
-	// const Eigen::Matrix<float, 3, Eigen::Dynamic>& origins = tracer.getRayOrigins();
-	// const Eigen::Matrix<float, 3, Eigen::Dynamic>& directions = tracer.getRayDirections();
 
 	if (numRays == 0)
 		return;
@@ -424,6 +374,12 @@ void Renderer::renderShapes(const std::vector<Shape*>& shapes) {
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 }
 
+void Renderer::clampImagePlanePan() {
+	// Restrict image pan to within ImagePlane
+	imagePlanePan.x = glm::clamp(imagePlanePan.x, -1.0f, 1.0f);
+	imagePlanePan.y = glm::clamp(imagePlanePan.y, -1.0f, 1.0f);
+}
+
 void Renderer::renderImagePlane() {
 	quadProgram->use();
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -453,8 +409,11 @@ void Renderer::renderImagePlane() {
 		glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
 		glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
 	} else {
-		// Full screen quad
 		glm::mat4 model = glm::mat4(1.0f);
+
+		model = glm::scale(model, glm::vec3(imagePlaneZoom, imagePlaneZoom, 1.0f));
+		model = glm::translate(model, glm::vec3(imagePlanePan.x, imagePlanePan.y, 0.0f));
+
 		glm::mat4 orthoProjection = glm::ortho(-1.0f, 1.0f, -1.0f, 1.0f, -1.0f, 1.0f);
 		glm::mat4 hudView = glm::mat4(1.0f);
 
@@ -600,6 +559,11 @@ void Renderer::processInput(float deltaTime) {
 	}
 }
 
+void Renderer::resetImagePlaneView() {
+	imagePlaneZoom = 1.0f;
+	imagePlanePan = glm::vec2(0.0f, 0.0f);
+}
+
 void Renderer::framebufferSizeCallback(GLFWwindow* window, int width, int height) {
 	(void)window;
 	if (instance) {
@@ -609,6 +573,10 @@ void Renderer::framebufferSizeCallback(GLFWwindow* window, int width, int height
 		if (instance->tracerPtr) {
 			instance->tracerPtr->resize(width * height);
 		}
+
+		// Reset zoom and pan on resize
+		instance->imagePlaneZoom = 1.0f;
+		instance->imagePlanePan = glm::vec2(0.0f, 0.0f);
 	}
 }
 
@@ -623,9 +591,42 @@ void Renderer::scrollCallback(GLFWwindow* window, double xoffset, double yoffset
 	if (io.WantCaptureMouse || !instance)
 		return;
 
-	float currentFov = instance->cam.getFov();
-	currentFov -= (float)yoffset * 2.0f;
-	instance->cam.setFov(currentFov);
+	if (instance->cam.getGhostMode()) {
+		float currentFov = instance->cam.getFov();
+		currentFov -= (float)yoffset * 2.0f;
+		instance->cam.setFov(currentFov);
+	} else {
+		double mouseX, mouseY;
+		glfwGetCursorPos(window, &mouseX, &mouseY);
+
+		// Convert mouse pos to NDC
+		float ndcX = (2.0f * mouseX / instance->screenWidth) - 1.0f;
+		float ndcY = 1.0f - (2.0f * mouseY / instance->screenHeight);
+
+		// Calculate point on ImagePlane that is under the cursor (for absolute panning and zoom)
+		glm::vec2 pointInImage = glm::vec2(ndcX, ndcY) / instance->imagePlaneZoom - instance->imagePlanePan;
+
+		// Zoom
+		float zoomFactor = 1.0f + (float)yoffset * 0.1f;
+		instance->imagePlaneZoom *= zoomFactor;
+
+		// TODO: Find a way to clamp these in one statement?
+		// Ensure can't zoom out beyond screen
+    const float minZoom = 1.0f;
+		if (instance->imagePlaneZoom < minZoom) {
+			instance->imagePlaneZoom = minZoom;
+		}
+
+		// Ensure user can't zoom too far (causing view to clip through image)
+		float maxZoom = 16.0f;
+		if (instance->imagePlaneZoom > maxZoom) {
+			instance->imagePlaneZoom = maxZoom;
+		}
+
+		// Calc new pan
+		instance->imagePlanePan = glm::vec2(ndcX, ndcY) / instance->imagePlaneZoom - pointInImage;
+		instance->clampImagePlanePan();
+	}
 }
 
 void Renderer::cursorPositionCallback(GLFWwindow* window, double xpos, double ypos) {
@@ -644,18 +645,30 @@ void Renderer::cursorPositionCallback(GLFWwindow* window, double xpos, double yp
 			instance->lastMouseY = ypos;
 		} else {
 			double xoffset = xpos - instance->lastMouseX;
-			double yoffset = instance->lastMouseY - ypos;
+			double yoffset = ypos - instance->lastMouseY;
 
 			instance->lastMouseX = xpos;
 			instance->lastMouseY = ypos;
 
-			instance->cam.setCamYaw(instance->cam.getCamYaw() + xoffset * instance->mouseSensitivity);
-			instance->cam.setCamPitch(instance->cam.getCamPitch() + yoffset * instance->mouseSensitivity);
+			if (instance->cam.getGhostMode()) {
+				// Rotate camera
+				instance->cam.setCamYaw(instance->cam.getCamYaw() + xoffset * instance->mouseSensitivity);
+				instance->cam.setCamPitch(instance->cam.getCamPitch() - yoffset * instance->mouseSensitivity);
 
-			if (instance->cam.getCamPitch() > 89.0f)
-				instance->cam.setCamPitch(89.0f);
-			if (instance->cam.getCamPitch() < -89.0f)
-				instance->cam.setCamPitch(-89.0f);
+				if (instance->cam.getCamPitch() > 89.0f)
+					instance->cam.setCamPitch(89.0f);
+				if (instance->cam.getCamPitch() < -89.0f)
+					instance->cam.setCamPitch(-89.0f);
+			} else {
+				float ndcDeltaX = (2.0f * xoffset) / (instance->screenWidth * instance->imagePlaneZoom);
+				float ndcDeltaY = -(2.0f * yoffset) / (instance->screenHeight * instance->imagePlaneZoom);
+
+				// Pan
+				instance->imagePlanePan.x += ndcDeltaX;
+				instance->imagePlanePan.y += ndcDeltaY;
+
+				instance->clampImagePlanePan();
+			}
 		}
 	} else {
 		instance->isDragging = false;

@@ -22,95 +22,6 @@ bool renderToImagePlane = false;
 RayTracer tracer(800 * 600, 16);
 Renderer renderer(800, 600);
 
-// void testIntersections() {
-//	int default_ray_steps = 8;
-//	Eigen::Array<int, 1, 2> ray_steps;        // Negative ray step = inactive
-//	ray_steps.setConstant(default_ray_steps); // Set all to default value
-//
-//	Eigen::Matrix<int, 3, 2> ray_colors; // RGB - Start at 0
-//	ray_colors.col(0) << 0, 0, 0;
-//	ray_colors.col(1) << 0, 0, 0;
-//	std::cout << ray_colors << "\n---\n";
-//
-//	Eigen::Matrix<float, 3, 2> ray_origins;
-//	ray_origins.col(0) << -1, -1, -1; // Should intersect
-//	ray_origins.col(1) << 1, 1, 1;    // Shouldn't intersect
-//	std::cout << ray_origins << "\n---\n";
-//
-//	Eigen::Matrix<float, 3, 2> ray_directions;
-//	ray_directions.col(0) << 1, 1, 1;
-//	ray_directions.col(1) << 1, 1, 1;
-//	std::cout << ray_directions << "\n---\n";
-//
-//	Eigen::Vector3f sphere_center(0, 0, 0);
-//	float sphere_radius = 1.0f;
-//
-//	for (int i = 0; i < ray_origins.cols(); i++) {
-//		// Skip masked out rays
-//		if (ray_steps(0, i) < 0)
-//			continue;
-//
-//		ray_steps(0, i)--;
-//
-//		Eigen::Vector3f o = ray_origins.col(i);
-//		Eigen::Vector3f d = ray_directions.col(i);
-//		d.normalize();
-//
-//		Eigen::Vector3f oc = o - sphere_center;
-//
-//		float a = d.dot(d);
-//		float b = 2 * d.dot(oc);
-//		float c = oc.dot(oc) - sphere_radius * sphere_radius;
-//
-//		float discriminant = b * b - 4 * a * c;
-//
-//		if (discriminant < 0) {
-//			std::cout << "Ray " << i << " misses the sphere\n";
-//			// Mask out - NEGATIVE STEP MEANS INACTIVE
-//			ray_steps(0, i) = -1;
-//		} else {
-//			float t1 = (-b - std::sqrt(discriminant)) / (2 * a);
-//			float t2 = (-b + std::sqrt(discriminant)) / (2 * a);
-//			float t = (t1 > 0) ? t1 : ((t2 > 0) ? t2 : -1);
-//			if (t < 0) {
-//				std::cout << "Ray " << i << " hits behind the origin\n";
-//				// Mask out
-//				ray_steps(0, i) = -1;
-//			} else {
-//				Eigen::Vector3f hit_point = o + t * d;
-//				std::cout << "Ray " << i << " intersects at t=" << t << ", point=" << hit_point.transpose() << "\n";
-//
-//				// TODO: Replace these test values
-//         // These will update depending on the material
-//
-//				// Update colors
-//				ray_colors.col(i) << 255, 0, 0;
-//
-//				// Update origin
-//				ray_origins.col(i) << ray_origins.col(i) + Eigen::Vector3f::Ones();
-//
-//				// Update directions
-//				ray_directions.col(i) << (ray_directions.col(i) + Eigen::Vector3f::Ones());
-//				ray_directions.col(i).normalize();
-//
-//				// Check for intersections again (loop)
-//			}
-//		}
-//	}
-//
-//	// ray_origins + t*ray_directions
-//
-//	// int t = 10;
-//	// std::cout << (((ray_origins + t * ray_directions) /*-sphere_pos*/).transpose()) * (((ray_origins + t * ray_directions) /*-sphere_pos*/)) << std::endl;
-//
-//	// Eigen::Matrix<float, 1, 3> sphere;
-//	// sphere.row(0) << 1, 1, 1;
-//	// std::cout << sphere << std::endl;
-//	// std::cout << (sphere * sphere.transpose()) << std::endl;
-//
-//	exit(0);
-// }
-
 // Scene data
 std::vector<Shape*> worldObjects;
 
@@ -144,10 +55,6 @@ void cleanupScene() {
 }
 
 void setupScene() {
-	// Cube* cube = new Cube();
-	// cube->position = glm::vec3(0.0f, 0.0f, -10.0f);
-	// worldObjects.push_back(cube);
-
 	Sphere* sphere;
 	sphere = new Sphere(0.4f, 4, glm::vec3(0.0f, 0.0f, -5.0f));
 	worldObjects.push_back(sphere);
@@ -160,16 +67,6 @@ void setupScene() {
 	float radius = (float)(2 << 12);
 	sphere = new Sphere(radius, 6, glm::vec3(0.0f, -radius - 1.0f, -5.0f));
 	worldObjects.push_back(sphere);
-
-	// float planeSize = 512.0f;
-	// Square* square = new Square(glm::vec3(planeSize, -1.0f, -planeSize), glm::vec3(-planeSize, -1.0f, -planeSize), glm::vec3(planeSize, -1.0f, planeSize));
-	// worldObjects.push_back(square);
-
-	// for (int i = 0; i < 32; i++) {
-	//	Triangle* triangle = new Triangle();
-	//	triangle->position = glm::vec3(0.0f, 0.0f, (float)(-i) * 0.1);
-	//	worldObjects.push_back(triangle);
-	// }
 }
 
 void renderUI(Renderer& renderer) {
@@ -183,6 +80,7 @@ void renderUI(Renderer& renderer) {
 	if (ImGui::Button("Reset")) {
 		renderToImagePlane = false;
 		renderer.cleanupRays();
+		renderer.resetImagePlaneView();
 	}
 
 	// ImGui::SliderInt("Thread Count", &threadCount, 1, 16);
@@ -212,7 +110,6 @@ void renderUI(Renderer& renderer) {
 }
 
 int main() {
-	// testIntersections();
 	std::cout << "Initializing ImGui..." << std::endl;
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();

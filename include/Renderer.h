@@ -55,6 +55,7 @@ class Renderer {
 	int getHeight() const { return screenHeight; }
 	void setDimensions(int width, int height);
 	void processInput(float deltaTime);
+	void resetImagePlaneView();
 
 	// callbacks
 	static void framebufferSizeCallback(GLFWwindow* window, int width, int height);
@@ -94,10 +95,14 @@ class Renderer {
 	double lastMouseY;
 	float mouseSensitivity;
 
+	float imagePlaneZoom{1.0f};
+	glm::vec2 imagePlanePan{0.0f, 0.0f};
+
 	// Helper methods
 	void initializeShaders();
 	void initializeBuffers();
 	void initializeTexture();
 	void setupRasterUniforms(const glm::mat4& model, const glm::mat4& view, const glm::mat4& projection, const glm::vec4& color);
+	void clampImagePlanePan();
 	static Renderer* instance;
 };
