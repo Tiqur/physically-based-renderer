@@ -55,9 +55,10 @@ static const char* quadFragmentShaderSource = R"(
     in vec2 TexCoord;
     out vec4 FragColor;
     uniform sampler2D uTexture;
+    uniform float uAlpha;
 
     void main() {
-      FragColor = texture(uTexture, TexCoord);
+      FragColor = texture(uTexture, TexCoord)*uAlpha;
     }
 )";
 
@@ -394,6 +395,8 @@ void Renderer::renderImagePlane() {
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, imagePlaneTexture);
 	glUniform1i(glGetUniformLocation(quadProgram->id(), "uTexture"), 0);
+	float alpha = 1.0f;
+	glUniform1f(glGetUniformLocation(quadProgram->id(), "uAlpha"), alpha);
 
 	if (cam.getGhostMode()) {
 
