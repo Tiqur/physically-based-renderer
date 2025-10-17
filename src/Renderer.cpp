@@ -381,6 +381,8 @@ void Renderer::clampImagePlanePan() {
 }
 
 void Renderer::renderImagePlane() {
+	cam.updateImagePlane((float)screenWidth, (float)screenHeight);
+
 	quadProgram->use();
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	quadVAO->bind();
@@ -394,7 +396,6 @@ void Renderer::renderImagePlane() {
 	glUniform1i(glGetUniformLocation(quadProgram->id(), "uTexture"), 0);
 
 	if (cam.getGhostMode()) {
-		cam.updateImagePlane((float)screenWidth, (float)screenHeight);
 
 		const ImagePlane& plane = cam.getImagePlane();
 		glm::mat4 model = plane.modelMatrix();
@@ -612,7 +613,7 @@ void Renderer::scrollCallback(GLFWwindow* window, double xoffset, double yoffset
 
 		// TODO: Find a way to clamp these in one statement?
 		// Ensure can't zoom out beyond screen
-    const float minZoom = 1.0f;
+		const float minZoom = 1.0f;
 		if (instance->imagePlaneZoom < minZoom) {
 			instance->imagePlaneZoom = minZoom;
 		}

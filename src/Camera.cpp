@@ -1,6 +1,10 @@
 #include "Camera.h"
+#include <iostream>
 
-Camera::Camera() = default;
+Camera::Camera() {
+	ghostQuad.transform.position = cam.position + cam.forward() * projection.nearPlane;
+	savedCam = cam;
+}
 
 // Getters
 float Camera::getFov() const { return projection.fov; }
@@ -35,6 +39,8 @@ void Camera::setFov(float newFov) {
 void Camera::setCamPos(glm::vec3 newPos) {
 	cam.position = newPos;
 	if (!ghostMode) {
+		Transform ghostTransform = cam;
+		ghostTransform.position = cam.position + cam.forward() * projection.nearPlane;
 		setGhostQuadTransform(cam);
 	}
 }

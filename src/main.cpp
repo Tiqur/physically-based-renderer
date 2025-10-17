@@ -70,8 +70,10 @@ void setupScene() {
 }
 
 void renderUI(Renderer& renderer) {
+	Camera& cam = renderer.getCamera();
+
 	// For Debugging
-	ImGui::ShowMetricsWindow();
+	// ImGui::ShowMetricsWindow();
 
 	ImGui::Begin("Scene Settings");
 
@@ -90,6 +92,9 @@ void renderUI(Renderer& renderer) {
 		tracer.traceStep();
 	}
 	if (ImGui::Button("Render")) {
+		Camera& cam = renderer.getCamera();
+		cam.updateImagePlane((float)renderer.getWidth(), (float)renderer.getHeight());
+
 		renderer.cleanupRays();
 		tracer.initializeRays(renderer);
 		renderer.setupRayBuffers(tracer);
@@ -101,7 +106,6 @@ void renderUI(Renderer& renderer) {
 
 	ImGui::Begin("Camera");
 
-	Camera& cam = renderer.getCamera();
 	if (ImGui::Button(cam.getGhostMode() ? "Disable Ghost" : "Enable Ghost")) {
 		cam.toggleGhostMode();
 	}

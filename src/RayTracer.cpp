@@ -45,8 +45,14 @@ void RayTracer::initializeRays(Renderer& r) {
 	t_distance.setConstant(std::numeric_limits<float>::infinity()); // We use infinity so that ANY object hit will be closer
 
 	Camera& cam = r.getCamera();
-	Transform savedCamTransform = cam.getSavedCamTransform();
-	glm::vec3 origin = savedCamTransform.position;
+	// cam.updateImagePlane((float)r.getWidth(), (float)r.getHeight());
+
+	// Transform savedCamTransform = cam.getSavedCamTransform();
+	// glm::vec3 origin = savedCamTransform.position;
+	// Eigen::Vector3f cameraOrigin(origin.x, origin.y, origin.z);
+
+	Transform renderCamTransform = cam.getGhostMode() ? cam.getSavedCamTransform() : cam.getCamTransform();
+	glm::vec3 origin = renderCamTransform.position;
 	Eigen::Vector3f cameraOrigin(origin.x, origin.y, origin.z);
 
 	auto screenWidth = r.getWidth();
