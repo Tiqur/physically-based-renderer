@@ -88,61 +88,70 @@ void RayTracer::initializeRays(Renderer& r) {
 
 	// Offset each pixel to ensure ray is centered
 	float pixelWidth = quadWorldWidth / (float)screenWidth;
-	// float pixelHeight = quadWorldHeight / (float)screenHeight();
 
-	// std::cout << screenWidth << std::endl;
-	// std::cout << screenHeight << std::endl;
-	//  exit(0);
+	// Parallelize ray creation
+	const unsigned int numThreads = std::thread::hardware_concurrency();
+	std::vector<std::thread> threads;
+	threads.reserve(numThreads);
 
-	// Iterate for each pixel in image
-	for (int x = 0; x < screenWidth; x++) {
+	// Create chunk to do work on per thread
+	int chunk = (screenWidth + numThreads - 1) / numThreads;
 
-		// Pixel offset right
-		glm::vec3 offsetRight = plane.transform.right() * (pixelWidth * x);
+	std::cout << "Initializing " << requiredPixels * sampleCount << " rays..." << std::endl;
 
-		for (int y = 0; y < screenHeight; y++) {
+	for (unsigned int t = 0; t < numThreads; ++t) {
+		int startX = t * chunk;
+		int endX = std::min(startX + chunk, screenWidth);
 
-			// Pixel offset down
-			glm::vec3 offsetDown = plane.transform.up() * (pixelWidth * y);
-			glm::vec3 pixelTopLeft = quadTopLeft + offsetRight - offsetDown;
+		threads.emplace_back([=, this]() {
+			std::mt19937 rng_local(std::random_device{}());
+			std::uniform_real_distribution<float> dist_local(0.0f, 1.0f);
 
-			int pixelIndex = x + y * screenWidth;
+			for (int x = startX; x < endX; x++) {
 
-			for (int s = 0; s < sampleCount; s++) {
-				float randX, randY;
+				// Pixel offset right
+				glm::vec3 offsetRight = plane.transform.right() * (pixelWidth * x);
 
-				// If sample count is 1, send through center of pixel
-				if (sampleCount == 1) {
-					randX = 0.0f;
-					randY = 0.0f;
-				} else {
-					randX = dist(rng);
-					randY = dist(rng);
+				for (int y = 0; y < screenHeight; y++) {
+
+					// Pixel offset down
+					glm::vec3 offsetDown = plane.transform.up() * (pixelWidth * y);
+					glm::vec3 pixelTopLeft = quadTopLeft + offsetRight - offsetDown;
+
+					int pixelIndex = x + y * screenWidth;
+
+					for (int s = 0; s < sampleCount; s++) {
+						float randX, randY;
+
+						// If sample count is 1, send through center of pixel
+						if (sampleCount == 1) {
+							randX = 0.0f;
+							randY = 0.0f;
+						} else {
+							randX = dist_local(rng_local);
+							randY = dist_local(rng_local);
+						}
+
+						glm::vec3 sampleOffsetRight = plane.transform.right() * (pixelWidth * randX);
+						glm::vec3 sampleOffsetDown = plane.transform.up() * (pixelWidth * randY);
+						glm::vec3 posOnImagePlane = pixelTopLeft + sampleOffsetRight - sampleOffsetDown;
+
+						Eigen::Vector3f posEigen(posOnImagePlane.x, posOnImagePlane.y, posOnImagePlane.z);
+
+						int rayIndex = pixelIndex * sampleCount + s;
+						ray_origins.col(rayIndex) = posEigen;
+						ray_directions.col(rayIndex) = (posEigen - cameraOrigin).normalized();
+					}
 				}
-
-				glm::vec3 sampleOffsetRight = plane.transform.right() * (pixelWidth * randX);
-				glm::vec3 sampleOffsetDown = plane.transform.up() * (pixelWidth * randY);
-				glm::vec3 posOnImagePlane = pixelTopLeft + sampleOffsetRight - sampleOffsetDown;
-
-				Eigen::Vector3f posEigen(posOnImagePlane.x, posOnImagePlane.y, posOnImagePlane.z);
-
-				int rayIndex = pixelIndex * sampleCount + s;
-				ray_origins.col(rayIndex) = posEigen;
-				ray_directions.col(rayIndex) = (posEigen - cameraOrigin).normalized();
 			}
-
-			// TODO: I'm guessing for this we can either add another value to associate pixel with ray, or use chunks of N length?
-			// Max dir can go in any direction for Monte Carlo based anti aliasing:
-			// let dirToCenterOfPixel = <a, b, c>
-			//
-			//   { (offset, a, b, c) ∈ ℝ⁴ |
-			//   a - (pw/2) < offset < a + (pw/2),
-			//   b - (pw/2) < offset < b + (pw/2),
-			//   c - (pw/2) < offset < c + (pw/2) }
-		}
+		});
 	}
 
-	ray_colors.setZero();
+	// Wait for all threads to finish
+	for (auto& th : threads)
+		th.join();
+
+	std::cout << "Done!" << std::endl;
 }
 
 Eigen::Matrix<int, 3, Eigen::Dynamic> RayTracer::getAveragedColors() const {
