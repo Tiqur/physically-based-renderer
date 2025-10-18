@@ -7,7 +7,7 @@
 class Sphere : public Shape {
   public:
 	float radius = 0;
-	Sphere(float radius, int subDivisions, glm::vec3 center = glm::vec3(0.0f));
+	Sphere(float radius, int subDivisions, glm::vec3 center = glm::vec3(0.0f), Material mat = Material::NORMAL);
 	std::vector<float> getVertices() const;
 	bool intersect(Ray) const;
 

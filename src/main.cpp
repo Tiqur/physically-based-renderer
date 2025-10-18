@@ -1,4 +1,5 @@
 #include "Cube.h"
+#include "Material.h"
 #include "Ray.h"
 #include "RayTracer.h"
 #include "Renderer.h"
@@ -56,7 +57,7 @@ void cleanupScene() {
 
 void setupScene() {
 	Sphere* sphere;
-	sphere = new Sphere(0.4f, 4, glm::vec3(0.0f, 0.0f, -5.0f));
+	sphere = new Sphere(0.4f, 4, glm::vec3(0.0f, 0.0f, -5.0f), Material::DIFFUSE);
 	worldObjects.push_back(sphere);
 	sphere = new Sphere(1.0f, 4, glm::vec3(0.0f, 1.0f, -10.0f));
 	worldObjects.push_back(sphere);
@@ -161,7 +162,7 @@ int main() {
 		renderer.beginFrame();
 
 		renderer.updateTexture(tracer.getAveragedColors());
-		renderer.renderRays(tracer, rayStep);
+		//  renderer.renderRays(tracer, rayStep);
 		renderer.renderShapes(worldObjects);
 		renderer.renderFrustrum();
 

@@ -1,5 +1,6 @@
 #include "Sphere.h"
 #include "Ray.h"
+#include "Material.h"
 #include <vector>
 #include <map>
 #include <algorithm>
@@ -8,7 +9,8 @@ static glm::vec3 getMidpoint(const glm::vec3& v1, const glm::vec3& v2) {
     return glm::normalize(v1 + v2);
 }
 
-Sphere::Sphere(float radius, int subdivisions, glm::vec3 center) {
+Sphere::Sphere(float radius, int subdivisions, glm::vec3 center, Material mat) {
+    this->material = mat;
     this->radius = radius;
     this->position = center;
 

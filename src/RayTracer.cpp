@@ -158,6 +158,10 @@ Eigen::Matrix<int, 3, Eigen::Dynamic> RayTracer::getAveragedColors() const {
 	Eigen::Matrix<int, 3, Eigen::Dynamic> averaged_colors(3, numPixels);
 	averaged_colors.setZero();
 
+	// TODO: This takes a while if scaled up to around 2440x1440 (~55ms)
+	// std::cout << "Start" << std::endl;
+	// auto start = std::chrono::high_resolution_clock::now();
+
 	for (int pixelIdx = 0; pixelIdx < numPixels; pixelIdx++) {
 		Eigen::Vector3f colorSum(0.0f, 0.0f, 0.0f);
 
@@ -169,6 +173,11 @@ Eigen::Matrix<int, 3, Eigen::Dynamic> RayTracer::getAveragedColors() const {
 		Eigen::Vector3f avgColor = colorSum / (float)sampleCount;
 		averaged_colors.col(pixelIdx) = avgColor.cast<int>();
 	}
+
+	// auto end = std::chrono::high_resolution_clock::now();
+	// auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+	// std::cout << duration.count() << std::endl;
+	// std::cout << "Done" << std::endl;
 
 	return averaged_colors;
 }
@@ -241,7 +250,7 @@ void RayTracer::intersectSphere(const Sphere& sphere, int chunkIndex) {
 
 	for (int i = chunk.start; i < chunk.end; ++i) {
 		// if (ray_steps(0, i) == 0) {
-		//  continue;
+		//	continue;
 		// }
 
 		// Fake delay so I can debug
@@ -260,11 +269,18 @@ void RayTracer::intersectSphere(const Sphere& sphere, int chunkIndex) {
 			// If hit is in front of camera AND If hit object behind another, we don't care
 			if (t > 0.001f && t < t_distance(i)) {
 				t_distance(i) = t; // Update closest hit
-
-				Eigen::Vector3f hit_point = ray_origins.col(i) + t * ray_directions.col(i);
-				Eigen::Vector3f N = (hit_point - sphere_center).normalized();
-				Eigen::Vector3f color = (N + Eigen::Vector3f::Ones()) * 0.5f * 255.0f;
-				ray_colors.col(i) << color[0], color[1], color[2];
+				                   //
+				// TODO: Move this outside of specific shape method
+				switch (sphere.getMaterial()) {
+				case Material::DIFFUSE:
+					ray_colors.col(i) << 0.0f, 255.0f, 255.0f;
+					break;
+				default: // Normal
+					Eigen::Vector3f hit_point = ray_origins.col(i) + t * ray_directions.col(i);
+					Eigen::Vector3f N = (hit_point - sphere_center).normalized();
+					Eigen::Vector3f color = (N + Eigen::Vector3f::Ones()) * 0.5f * 255.0f;
+					ray_colors.col(i) << color[0], color[1], color[2];
+				};
 
 				ray_steps(0, i) = 0;
 			}

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Material.h"
 #include "Renderer.h"
 #include "Sphere.h"
 #include "Square.h"
@@ -57,7 +58,6 @@ class RayTracer {
 
 	// Getters
 	const Eigen::Array<int, 1, Eigen::Dynamic>& getRaySteps() const { return ray_steps; }
-	const Eigen::Matrix<int, 3, Eigen::Dynamic>& getRayColors() const { return ray_colors; }
 	const Eigen::Matrix<float, 3, Eigen::Dynamic>& getRayOrigins() const { return ray_origins; }
 	const Eigen::Matrix<float, 3, Eigen::Dynamic>& getRayDirections() const { return ray_directions; }
 
