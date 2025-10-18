@@ -3,7 +3,11 @@
 #include <iostream>
 #include <limits>
 
-RayTracer::RayTracer(int numRays, int maxSteps) : N(numRays), maxSteps(maxSteps) {
+RayTracer::RayTracer(int numPixels, int maxSteps, int sampleCount)
+    : numPixels(numPixels), sampleCount(sampleCount), maxSteps(maxSteps),
+      rng(std::random_device{}()), dist(-0.5f, 0.5f) {
+	N = numPixels * sampleCount;
+
 	ray_origins.resize(3, N);
 	ray_directions.resize(3, N);
 	ray_colors.resize(3, N);
@@ -13,16 +17,29 @@ RayTracer::RayTracer(int numRays, int maxSteps) : N(numRays), maxSteps(maxSteps)
 	computeChunks();
 }
 
-// If user changes window size
-void RayTracer::resize(int numRays) {
-	N = numRays;
+void RayTracer::resize(int newNumPixels) {
+	numPixels = newNumPixels;
+	N = numPixels * sampleCount;
+
 	ray_origins.resize(3, N);
 	ray_directions.resize(3, N);
 	ray_colors.resize(3, N);
 	ray_steps.resize(1, N);
 	t_distance.resize(1, N);
 
-	// We need to do this again since window may have more pixels/rays
+	computeChunks();
+}
+
+void RayTracer::setSampleCount(int samples) {
+	sampleCount = samples;
+	N = numPixels * sampleCount;
+
+	ray_origins.resize(3, N);
+	ray_directions.resize(3, N);
+	ray_colors.resize(3, N);
+	ray_steps.resize(1, N);
+	t_distance.resize(1, N);
+
 	computeChunks();
 }
 
@@ -60,9 +77,9 @@ void RayTracer::initializeRays(Renderer& r) {
 
 	// Must have in case user resizes window
 	// Also not in glfw resize callback due to performance
-	int requiredRays = screenWidth * screenHeight;
-	if (screenWidth * screenHeight != N) {
-		resize(requiredRays);
+	int requiredPixels = screenWidth * screenHeight;
+	if (requiredPixels != numPixels) {
+		resize(requiredPixels);
 	}
 
 	auto plane = cam.getImagePlane();
@@ -87,15 +104,32 @@ void RayTracer::initializeRays(Renderer& r) {
 
 			// Pixel offset down
 			glm::vec3 offsetDown = plane.transform.up() * (pixelWidth * y);
-			glm::vec3 posOnImagePlane = quadTopLeft + offsetRight - offsetDown;
+			glm::vec3 pixelTopLeft = quadTopLeft + offsetRight - offsetDown;
 
-			// Convert to Eigen
-			Eigen::Vector3f posEigen(posOnImagePlane.x, posOnImagePlane.y, posOnImagePlane.z);
+			int pixelIndex = x + y * screenWidth;
 
-			// Set ray properties
-			int index = x + y * screenWidth;
-			ray_origins.col(index) = posEigen;
-			ray_directions.col(index) = (posEigen - cameraOrigin).normalized();
+			for (int s = 0; s < sampleCount; s++) {
+				float randX, randY;
+
+				// If sample count is 1, send through center of pixel
+				if (sampleCount == 1) {
+					randX = 0.0f;
+					randY = 0.0f;
+				} else {
+					randX = dist(rng);
+					randY = dist(rng);
+				}
+
+				glm::vec3 sampleOffsetRight = plane.transform.right() * (pixelWidth * randX);
+				glm::vec3 sampleOffsetDown = plane.transform.up() * (pixelWidth * randY);
+				glm::vec3 posOnImagePlane = pixelTopLeft + sampleOffsetRight - sampleOffsetDown;
+
+				Eigen::Vector3f posEigen(posOnImagePlane.x, posOnImagePlane.y, posOnImagePlane.z);
+
+				int rayIndex = pixelIndex * sampleCount + s;
+				ray_origins.col(rayIndex) = posEigen;
+				ray_directions.col(rayIndex) = (posEigen - cameraOrigin).normalized();
+			}
 
 			// TODO: I'm guessing for this we can either add another value to associate pixel with ray, or use chunks of N length?
 			// Max dir can go in any direction for Monte Carlo based anti aliasing:
@@ -109,6 +143,25 @@ void RayTracer::initializeRays(Renderer& r) {
 	}
 
 	ray_colors.setZero();
+}
+
+Eigen::Matrix<int, 3, Eigen::Dynamic> RayTracer::getAveragedColors() const {
+	Eigen::Matrix<int, 3, Eigen::Dynamic> averaged_colors(3, numPixels);
+	averaged_colors.setZero();
+
+	for (int pixelIdx = 0; pixelIdx < numPixels; pixelIdx++) {
+		Eigen::Vector3f colorSum(0.0f, 0.0f, 0.0f);
+
+		for (int s = 0; s < sampleCount; s++) {
+			int rayIndex = pixelIdx * sampleCount + s;
+			colorSum += ray_colors.col(rayIndex).cast<float>();
+		}
+
+		Eigen::Vector3f avgColor = colorSum / (float)sampleCount;
+		averaged_colors.col(pixelIdx) = avgColor.cast<int>();
+	}
+
+	return averaged_colors;
 }
 
 void RayTracer::traceAllAsync(const std::vector<Shape*>& worldObjects) {
@@ -183,7 +236,7 @@ void RayTracer::intersectSphere(const Sphere& sphere, int chunkIndex) {
 		// }
 
 		// Fake delay so I can debug
-		// std::this_thread::sleep_for(std::chrono::nanoseconds(1));
+		std::this_thread::sleep_for(std::chrono::microseconds(1));
 
 		Eigen::Vector3f oc = ray_origins.col(i) - sphere_center;
 		float a = ray_directions.col(i).squaredNorm();

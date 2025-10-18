@@ -19,7 +19,7 @@
 bool renderToImagePlane = false;
 
 // TODO: Remove magic numbers
-RayTracer tracer(800 * 600, 16);
+RayTracer tracer(800 * 600, 16, 32);
 Renderer renderer(800, 600);
 
 // Scene data
@@ -160,7 +160,7 @@ int main() {
 		ImGui::NewFrame();
 		renderer.beginFrame();
 
-		renderer.updateTexture(tracer.getRayColors());
+		renderer.updateTexture(tracer.getAveragedColors());
 		renderer.renderRays(tracer, rayStep);
 		renderer.renderShapes(worldObjects);
 		renderer.renderFrustrum();
