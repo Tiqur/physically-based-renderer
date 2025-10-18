@@ -20,7 +20,7 @@
 bool renderToImagePlane = false;
 
 // TODO: Remove magic numbers
-RayTracer tracer(800 * 600, 16, 32);
+RayTracer tracer(800 * 600, 16, 8);
 Renderer renderer(800, 600);
 
 // Scene data
@@ -59,14 +59,14 @@ void setupScene() {
 	Sphere* sphere;
 	sphere = new Sphere(0.4f, 4, glm::vec3(0.0f, 0.0f, -5.0f), Material::DIFFUSE);
 	worldObjects.push_back(sphere);
-	sphere = new Sphere(1.0f, 4, glm::vec3(0.0f, 1.0f, -10.0f));
+	sphere = new Sphere(1.0f, 4, glm::vec3(0.0f, 1.0f, -10.0f), Material::DIFFUSE);
 	worldObjects.push_back(sphere);
-	sphere = new Sphere(4.0f, 4, glm::vec3(0.0f, 2.0f, -15.0f));
+	sphere = new Sphere(4.0f, 4, glm::vec3(0.0f, 2.0f, -15.0f), Material::DIFFUSE);
 	worldObjects.push_back(sphere);
 
 	// "Floor"
 	float radius = (float)(2 << 12);
-	sphere = new Sphere(radius, 6, glm::vec3(0.0f, -radius - 1.0f, -5.0f));
+	sphere = new Sphere(radius, 6, glm::vec3(0.0f, -radius - 1.0f, -5.0f), Material::DIFFUSE);
 	worldObjects.push_back(sphere);
 }
 

@@ -57,8 +57,8 @@ void RayTracer::computeChunks() {
 }
 
 void RayTracer::initializeRays(Renderer& r) {
-	ray_colors.setZero();
 	ray_steps.setConstant(maxSteps);
+	ray_colors.setConstant(255);
 	t_distance.setConstant(std::numeric_limits<float>::infinity()); // We use infinity so that ANY object hit will be closer
 
 	Camera& cam = r.getCamera();
@@ -191,14 +191,45 @@ void RayTracer::traceAllAsync(const std::vector<Shape*>& worldObjects) {
 
 	// Start in own separate thread so we can see it real-time
 	std::thread([this, &worldObjects]() {
-		std::vector<std::thread> threads;
+		for (int bounce = 0; bounce < maxSteps; ++bounce) {
+			for (int i = 0; i < N; ++i) {
+				if (ray_steps(0, i) > 0) {
+					t_distance(i) = std::numeric_limits<float>::infinity();
+				}
+			}
 
-		for (int i = 0; i < NUM_THREADS; ++i) {
-			threads.emplace_back(&RayTracer::traceChunk, this, i, worldObjects);
-		}
+			std::vector<std::thread> threads;
+			for (int i = 0; i < NUM_THREADS; ++i) {
+				threads.emplace_back(&RayTracer::traceChunk, this, i, worldObjects);
+			}
+			for (auto& t : threads) {
+				t.join();
+			}
 
-		for (auto& t : threads) {
-			t.join();
+			for (int i = 0; i < N; ++i) {
+				if (ray_steps(0, i) > 0 && t_distance(i) == std::numeric_limits<float>::infinity()) {
+					Eigen::Vector3f dir = ray_directions.col(i).normalized();
+					float t = 0.5f * (dir.y() + 1.0f);
+
+					Eigen::Vector3f sky_color = (1.0f - t) * Eigen::Vector3f(1.0f, 1.0f, 1.0f) + t * Eigen::Vector3f(0.5f, 0.7f, 1.0f);
+					Eigen::Vector3f final_color = (ray_colors.col(i).cast<float>().array() / 255.0f * sky_color.array() * 255.0f).matrix();
+
+					ray_colors.col(i) = final_color.cast<int>();
+					ray_steps(0, i) = 0;
+				}
+			}
+
+			bool done = true;
+
+			for (int i = 0; i < N; ++i) {
+				if (ray_steps(0, i) > 0) {
+					done = false;
+					break;
+				}
+			}
+
+			if (done)
+				break;
 		}
 
 		tracing = false;
@@ -243,18 +274,21 @@ void RayTracer::traceStep() {
 
 // TODO: Vectorize / use matrix math instead of per ray calculations
 void RayTracer::intersectSphere(const Sphere& sphere, int chunkIndex) {
+	std::mt19937 rng_local(std::random_device{}());
+	std::uniform_real_distribution<float> dist_local(-1.0f, 1.0f);
+
 	const ThreadChunk& chunk = chunks[chunkIndex];
 
 	Eigen::Vector3f sphere_center(sphere.position.x, sphere.position.y, sphere.position.z);
 	float sphere_radius_sq = sphere.radius * sphere.radius;
 
 	for (int i = chunk.start; i < chunk.end; ++i) {
-		// if (ray_steps(0, i) == 0) {
-		//	continue;
-		// }
+		if (ray_steps(0, i) == 0) {
+			continue;
+		}
 
 		// Fake delay so I can debug
-		std::this_thread::sleep_for(std::chrono::microseconds(1));
+		// std::this_thread::sleep_for(std::chrono::microseconds(1));
 
 		Eigen::Vector3f oc = ray_origins.col(i) - sphere_center;
 		float a = ray_directions.col(i).squaredNorm();
@@ -269,20 +303,40 @@ void RayTracer::intersectSphere(const Sphere& sphere, int chunkIndex) {
 			// If hit is in front of camera AND If hit object behind another, we don't care
 			if (t > 0.001f && t < t_distance(i)) {
 				t_distance(i) = t; // Update closest hit
-				                   //
+				Eigen::Vector3f hit_point = ray_origins.col(i) + t * ray_directions.col(i);
+				Eigen::Vector3f N = (hit_point - sphere_center).normalized();
+
 				// TODO: Move this outside of specific shape method
 				switch (sphere.getMaterial()) {
-				case Material::DIFFUSE:
-					ray_colors.col(i) << 0.0f, 255.0f, 255.0f;
-					break;
-				default: // Normal
-					Eigen::Vector3f hit_point = ray_origins.col(i) + t * ray_directions.col(i);
-					Eigen::Vector3f N = (hit_point - sphere_center).normalized();
-					Eigen::Vector3f color = (N + Eigen::Vector3f::Ones()) * 0.5f * 255.0f;
-					ray_colors.col(i) << color[0], color[1], color[2];
-				};
+				case Material::DIFFUSE: {
+					Eigen::Vector3f random_vec;
+					float lensq;
+					do {
+						random_vec = Eigen::Vector3f(dist_local(rng_local), dist_local(rng_local), dist_local(rng_local));
+						lensq = random_vec.squaredNorm();
+					} while (lensq > 1.0f || lensq < 1e-40f);
 
-				ray_steps(0, i) = 0;
+					Eigen::Vector3f unit_vec = random_vec / std::sqrt(lensq);
+
+					if (unit_vec.dot(N) < 0.0f) {
+						unit_vec = -unit_vec;
+					}
+
+					ray_origins.col(i) = hit_point;
+					ray_directions.col(i) = unit_vec;
+
+					ray_colors.col(i) = (ray_colors.col(i).cast<float>() * 0.5f).cast<int>();
+
+					ray_steps(0, i) = ray_steps(0, i) - 1;
+					break;
+				}
+				default: { // Normal
+					Eigen::Vector3f color = (N + Eigen::Vector3f::Ones()) * 0.5f * 255.0f;
+					ray_colors.col(i) = color.cast<int>();
+					ray_steps(0, i) = 0;
+					break;
+				}
+				};
 			}
 		}
 	}
