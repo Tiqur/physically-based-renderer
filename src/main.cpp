@@ -20,7 +20,7 @@
 bool renderToImagePlane = false;
 
 // TODO: Remove magic numbers
-RayTracer tracer(800 * 600, 16, 8);
+RayTracer tracer(800 * 600, 2048, 2048);
 Renderer renderer(800, 600);
 
 // Scene data
@@ -97,9 +97,12 @@ void renderUI(Renderer& renderer) {
 		cam.updateImagePlane((float)renderer.getWidth(), (float)renderer.getHeight());
 
 		renderer.cleanupRays();
-		tracer.initializeRays(renderer);
+
+		tracer.initializeRays(renderer, 0);
 		renderer.setupRayBuffers(tracer);
-		tracer.traceAllAsync(worldObjects);
+
+		// Start tracing
+		tracer.traceAllAsync(worldObjects, renderer);
 		renderToImagePlane = true;
 	}
 
@@ -162,7 +165,7 @@ int main() {
 		renderer.beginFrame();
 
 		renderer.updateTexture(tracer.getAveragedColors());
-		//  renderer.renderRays(tracer, rayStep);
+		renderer.renderRays(tracer, rayStep);
 		renderer.renderShapes(worldObjects);
 		renderer.renderFrustrum();
 

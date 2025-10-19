@@ -310,10 +310,11 @@ void Renderer::renderRays(const RayTracer& tracer, int rayStep) {
 		return;
 	}
 
-	size_t numPixels = (size_t)tracer.getNumPixels();
-	int sampleCount = tracer.getSampleCount();
+	size_t numRays = (size_t)tracer.getNumRays();
+	// const Eigen::Matrix<float, 3, Eigen::Dynamic>& origins = tracer.getRayOrigins();
+	// const Eigen::Matrix<float, 3, Eigen::Dynamic>& directions = tracer.getRayDirections();
 
-	if (numPixels == 0)
+	if (numRays == 0)
 		return;
 
 	rasterProgram->use();
@@ -329,17 +330,14 @@ void Renderer::renderRays(const RayTracer& tracer, int rayStep) {
 	int max_steps = tracer.getMaxSteps();
 	Eigen::Array<int, 1, Eigen::Dynamic> ray_steps = tracer.getRaySteps();
 
-	for (size_t pixelIdx = 0; pixelIdx < numPixels; ++pixelIdx) {
-		size_t row = pixelIdx / screenWidth;
-		size_t col = pixelIdx % screenWidth;
-		if (row % rayStep != 0 || col % rayStep != 0)
+	for (size_t i = 0; i < numRays; ++i) {
+		// Don't render rays unless they've been traced at least once
+		if (ray_steps[i] == max_steps)
 			continue;
 
-		// Only render the first sample for each pixel to avoid clutter
-		int rayIndex = pixelIdx * sampleCount;
-
-		// Don't render rays unless they've been traced at least once
-		if (ray_steps[rayIndex] == max_steps)
+		size_t row = i / screenWidth;
+		size_t col = i % screenWidth;
+		if (row % rayStep != 0 || col % rayStep != 0)
 			continue;
 
 		// TODO
@@ -348,7 +346,7 @@ void Renderer::renderRays(const RayTracer& tracer, int rayStep) {
 
 		rayVAO->bind();
 		setupRasterUniforms(identity, view, projection, color);
-		glDrawArrays(GL_LINES, rayIndex * 2, 2);
+		glDrawArrays(GL_LINES, i * 2, 2);
 	}
 }
 

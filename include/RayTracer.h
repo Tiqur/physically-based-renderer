@@ -20,10 +20,11 @@ struct ThreadChunk {
 
 class RayTracer {
   private:
-	int N;           // Num of rays (diff bc numPixels*sampleCount)
-	int numPixels;   // Actual number of pixels
-	int sampleCount; // Number of samples/rays per pixel
-	int maxSteps;
+	int N;         // Num of rays (diff bc numPixels*sampleCount)
+	int numPixels; // Actual number of pixels
+	int targetSampleCount;
+	int currentSampleCount;
+	int maxBounces;
 	int NUM_THREADS = 64;
 	std::atomic<bool> tracing{false}; // We want this to be atomic since it's being assigned within multiple threads
 
@@ -32,6 +33,7 @@ class RayTracer {
 	Eigen::Matrix<float, 3, Eigen::Dynamic> ray_origins;    // Position of each ray
 	Eigen::Matrix<float, 3, Eigen::Dynamic> ray_directions; // Direction of each ray (normalized)
 	Eigen::Matrix<float, 1, Eigen::Dynamic> t_distance;     // Tracks closest hit (prevents rendering mistakes due to execution order)
+	Eigen::Matrix<float, 3, Eigen::Dynamic> accumulated_colors;
 
 	// For random sampling
 	std::mt19937 rng;
@@ -39,8 +41,8 @@ class RayTracer {
 
   public:
 	// Init
-	RayTracer(int numPixels, int maxSteps, int sampleCount = 1);
-	void initializeRays(Renderer&);
+	RayTracer(int numPixels, int maxBounces, int sampleCount = 1);
+	void initializeRays(Renderer&, int sampleIndex);
 	void resize(int numPixels);
 	void setSampleCount(int samples);
 
@@ -50,7 +52,7 @@ class RayTracer {
 	void traceChunk(int chunkIndex, const std::vector<Shape*>& worldObjects);
 
 	// Trace
-	void traceAllAsync(const std::vector<Shape*>& worldObjects);
+	void traceAllAsync(const std::vector<Shape*>& worldObjects, Renderer& renderer);
 	void traceStep();
 
 	// Color averaging
@@ -60,11 +62,11 @@ class RayTracer {
 	const Eigen::Array<int, 1, Eigen::Dynamic>& getRaySteps() const { return ray_steps; }
 	const Eigen::Matrix<float, 3, Eigen::Dynamic>& getRayOrigins() const { return ray_origins; }
 	const Eigen::Matrix<float, 3, Eigen::Dynamic>& getRayDirections() const { return ray_directions; }
+	int getCurrentSampleCount() const { return currentSampleCount; }
 
 	int getNumRays() const { return N; }
 	int getNumPixels() const { return numPixels; }
-	int getSampleCount() const { return sampleCount; }
-	int getMaxSteps() const { return maxSteps; }
+	int getMaxSteps() const { return maxBounces; }
 	int getNumThreads() const { return NUM_THREADS; }
 	int isTracing() const { return tracing; }
 

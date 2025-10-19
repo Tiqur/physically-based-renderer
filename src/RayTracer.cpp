@@ -3,44 +3,39 @@
 #include <iostream>
 #include <limits>
 
-RayTracer::RayTracer(int numPixels, int maxSteps, int sampleCount)
-    : numPixels(numPixels), sampleCount(sampleCount), maxSteps(maxSteps),
+RayTracer::RayTracer(int numPixels, int maxBounces, int sampleCount)
+    : numPixels(numPixels), targetSampleCount(sampleCount), maxBounces(maxBounces),
       rng(std::random_device{}()), dist(-0.5f, 0.5f) {
-	N = numPixels * sampleCount;
+	N = numPixels;
 
 	ray_origins.resize(3, N);
 	ray_directions.resize(3, N);
 	ray_colors.resize(3, N);
 	ray_steps.resize(1, N);
 	t_distance.resize(1, N);
+	accumulated_colors.resize(3, numPixels);
+	accumulated_colors.setZero();
 
 	computeChunks();
 }
 
 void RayTracer::resize(int newNumPixels) {
 	numPixels = newNumPixels;
-	N = numPixels * sampleCount;
+	N = numPixels;
 
 	ray_origins.resize(3, N);
 	ray_directions.resize(3, N);
 	ray_colors.resize(3, N);
 	ray_steps.resize(1, N);
 	t_distance.resize(1, N);
+	accumulated_colors.resize(3, numPixels);
+	accumulated_colors.setZero();
 
 	computeChunks();
 }
 
 void RayTracer::setSampleCount(int samples) {
-	sampleCount = samples;
-	N = numPixels * sampleCount;
-
-	ray_origins.resize(3, N);
-	ray_directions.resize(3, N);
-	ray_colors.resize(3, N);
-	ray_steps.resize(1, N);
-	t_distance.resize(1, N);
-
-	computeChunks();
+	targetSampleCount = samples;
 }
 
 void RayTracer::computeChunks() {
@@ -49,15 +44,15 @@ void RayTracer::computeChunks() {
 	int remainder = N % NUM_THREADS;
 
 	int start = 0;
-	for (int i = 0; i < NUM_THREADS; ++i) {
+	for (int i = 0; i < NUM_THREADS; i++) {
 		int chunkSize = raysPerThread + (i < remainder ? 1 : 0);
 		chunks.push_back({start, start + chunkSize});
 		start += chunkSize;
 	}
 }
 
-void RayTracer::initializeRays(Renderer& r) {
-	ray_steps.setConstant(maxSteps);
+void RayTracer::initializeRays(Renderer& r, int sampleIndex) {
+	ray_steps.setConstant(maxBounces);
 	ray_colors.setConstant(255);
 	t_distance.setConstant(std::numeric_limits<float>::infinity()); // We use infinity so that ANY object hit will be closer
 
@@ -97,9 +92,9 @@ void RayTracer::initializeRays(Renderer& r) {
 	// Create chunk to do work on per thread
 	int chunk = (screenWidth + numThreads - 1) / numThreads;
 
-	std::cout << "Initializing " << requiredPixels * sampleCount << " rays..." << std::endl;
+	std::cout << "Initializing rays for sample " << sampleIndex << std::endl;
 
-	for (unsigned int t = 0; t < numThreads; ++t) {
+	for (unsigned int t = 0; t < numThreads; t++) {
 		int startX = t * chunk;
 		int endX = std::min(startX + chunk, screenWidth);
 
@@ -120,28 +115,25 @@ void RayTracer::initializeRays(Renderer& r) {
 
 					int pixelIndex = x + y * screenWidth;
 
-					for (int s = 0; s < sampleCount; s++) {
-						float randX, randY;
+					float randX, randY;
 
-						// If sample count is 1, send through center of pixel
-						if (sampleCount == 1) {
-							randX = 0.0f;
-							randY = 0.0f;
-						} else {
-							randX = dist_local(rng_local);
-							randY = dist_local(rng_local);
-						}
-
-						glm::vec3 sampleOffsetRight = plane.transform.right() * (pixelWidth * randX);
-						glm::vec3 sampleOffsetDown = plane.transform.up() * (pixelWidth * randY);
-						glm::vec3 posOnImagePlane = pixelTopLeft + sampleOffsetRight - sampleOffsetDown;
-
-						Eigen::Vector3f posEigen(posOnImagePlane.x, posOnImagePlane.y, posOnImagePlane.z);
-
-						int rayIndex = pixelIndex * sampleCount + s;
-						ray_origins.col(rayIndex) = posEigen;
-						ray_directions.col(rayIndex) = (posEigen - cameraOrigin).normalized();
+					// If sample count is 1, send through center of pixel
+					if (targetSampleCount == 1) {
+						randX = 0.0f;
+						randY = 0.0f;
+					} else {
+						randX = dist_local(rng_local);
+						randY = dist_local(rng_local);
 					}
+
+					glm::vec3 sampleOffsetRight = plane.transform.right() * (pixelWidth * randX);
+					glm::vec3 sampleOffsetDown = plane.transform.up() * (pixelWidth * randY);
+					glm::vec3 posOnImagePlane = pixelTopLeft + sampleOffsetRight - sampleOffsetDown;
+
+					Eigen::Vector3f posEigen(posOnImagePlane.x, posOnImagePlane.y, posOnImagePlane.z);
+
+					ray_origins.col(pixelIndex) = posEigen;
+					ray_directions.col(pixelIndex) = (posEigen - cameraOrigin).normalized();
 				}
 			}
 		});
@@ -156,33 +148,21 @@ void RayTracer::initializeRays(Renderer& r) {
 
 Eigen::Matrix<int, 3, Eigen::Dynamic> RayTracer::getAveragedColors() const {
 	Eigen::Matrix<int, 3, Eigen::Dynamic> averaged_colors(3, numPixels);
-	averaged_colors.setZero();
 
-	// TODO: This takes a while if scaled up to around 2440x1440 (~55ms)
-	// std::cout << "Start" << std::endl;
-	// auto start = std::chrono::high_resolution_clock::now();
-
-	for (int pixelIdx = 0; pixelIdx < numPixels; pixelIdx++) {
-		Eigen::Vector3f colorSum(0.0f, 0.0f, 0.0f);
-
-		for (int s = 0; s < sampleCount; s++) {
-			int rayIndex = pixelIdx * sampleCount + s;
-			colorSum += ray_colors.col(rayIndex).cast<float>();
-		}
-
-		Eigen::Vector3f avgColor = colorSum / (float)sampleCount;
-		averaged_colors.col(pixelIdx) = avgColor.cast<int>();
+	if (currentSampleCount == 0) {
+		averaged_colors.setZero();
+		return averaged_colors;
 	}
 
-	// auto end = std::chrono::high_resolution_clock::now();
-	// auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-	// std::cout << duration.count() << std::endl;
-	// std::cout << "Done" << std::endl;
+	for (int pixelIdx = 0; pixelIdx < numPixels; pixelIdx++) {
+		Eigen::Vector3f avgColor = accumulated_colors.col(pixelIdx) / (float)currentSampleCount;
+		averaged_colors.col(pixelIdx) = avgColor.cast<int>();
+	}
 
 	return averaged_colors;
 }
 
-void RayTracer::traceAllAsync(const std::vector<Shape*>& worldObjects) {
+void RayTracer::traceAllAsync(const std::vector<Shape*>& worldObjects, Renderer& renderer) {
 	// We don't want trace if it's already tracing
 	if (isTracing())
 		return;
@@ -190,46 +170,56 @@ void RayTracer::traceAllAsync(const std::vector<Shape*>& worldObjects) {
 	tracing = true;
 
 	// Start in own separate thread so we can see it real-time
-	std::thread([this, &worldObjects]() {
-		for (int bounce = 0; bounce < maxSteps; ++bounce) {
-			for (int i = 0; i < N; ++i) {
-				if (ray_steps(0, i) > 0) {
-					t_distance(i) = std::numeric_limits<float>::infinity();
+	std::thread([this, &worldObjects, &renderer]() {
+		accumulated_colors.setZero();
+		currentSampleCount = 0;
+
+		// Sequential anti aliasing
+		for (int sample = 0; sample < targetSampleCount; sample++) {
+			initializeRays(renderer, sample);
+
+			// Bounces
+			for (int bounce = 0; bounce < maxBounces; bounce++) {
+				for (int i = 0; i < N; i++) {
+					if (ray_steps(0, i) > 0) {
+						t_distance(i) = std::numeric_limits<float>::infinity();
+					}
 				}
-			}
 
-			std::vector<std::thread> threads;
-			for (int i = 0; i < NUM_THREADS; ++i) {
-				threads.emplace_back(&RayTracer::traceChunk, this, i, worldObjects);
-			}
-			for (auto& t : threads) {
-				t.join();
-			}
-
-			for (int i = 0; i < N; ++i) {
-				if (ray_steps(0, i) > 0 && t_distance(i) == std::numeric_limits<float>::infinity()) {
-					Eigen::Vector3f dir = ray_directions.col(i).normalized();
-					float t = 0.5f * (dir.y() + 1.0f);
-
-					Eigen::Vector3f sky_color = (1.0f - t) * Eigen::Vector3f(1.0f, 1.0f, 1.0f) + t * Eigen::Vector3f(0.5f, 0.7f, 1.0f);
-					Eigen::Vector3f final_color = (ray_colors.col(i).cast<float>().array() / 255.0f * sky_color.array() * 255.0f).matrix();
-
-					ray_colors.col(i) = final_color.cast<int>();
-					ray_steps(0, i) = 0;
+				std::vector<std::thread> threads;
+				for (int i = 0; i < NUM_THREADS; i++) {
+					threads.emplace_back(&RayTracer::traceChunk, this, i, worldObjects);
 				}
-			}
+				for (auto& t : threads) {
+					t.join();
+				}
 
-			bool done = true;
+				for (int i = 0; i < N; i++) {
+					if (ray_steps(0, i) > 0 && t_distance(i) == std::numeric_limits<float>::infinity()) {
+						Eigen::Vector3f dir = ray_directions.col(i).normalized();
+						float t = 0.5f * (dir.y() + 1.0f);
 
-			for (int i = 0; i < N; ++i) {
-				if (ray_steps(0, i) > 0) {
-					done = false;
+						// Simple sky gradient
+						Eigen::Vector3f sky_color = (1.0f - t) * Eigen::Vector3f(1.0f, 1.0f, 1.0f) + t * Eigen::Vector3f(0.5f, 0.7f, 1.0f);
+						Eigen::Vector3f final_color = (ray_colors.col(i).cast<float>().array() / 255.0f * sky_color.array() * 255.0f).matrix();
+
+						ray_colors.col(i) = final_color.cast<int>();
+						ray_steps(0, i) = 0;
+					}
+				}
+
+				// Check if all rays are done
+				if (ray_steps.isZero())
 					break;
-				}
 			}
 
-			if (done)
-				break;
+			// Accumulate sample
+			for (int i = 0; i < numPixels; ++i) {
+				accumulated_colors.col(i) += ray_colors.col(i).cast<float>();
+			}
+
+			currentSampleCount++;
+			std::cout << "Completed sample " << currentSampleCount << std::endl;
 		}
 
 		tracing = false;
