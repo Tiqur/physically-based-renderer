@@ -2,7 +2,8 @@
 ### A Multithreaded, Matrix-Based Path Tracer With Interactive Ray Visualization
 
 
-<img width="2535" height="1441" alt="image" src="https://github.com/user-attachments/assets/bb98adc8-c4aa-4c6d-8463-a65bb77caa61" />
+<img width="2307" height="1437" alt="image" src="https://github.com/user-attachments/assets/24268662-c5c5-4ea6-be11-bf1a72b036a8" />
+
 
 
 #### About: 
