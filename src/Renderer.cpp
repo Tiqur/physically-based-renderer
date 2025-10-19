@@ -631,7 +631,7 @@ void Renderer::scrollCallback(GLFWwindow* window, double xoffset, double yoffset
 		}
 
 		// Ensure user can't zoom too far (causing view to clip through image)
-		float maxZoom = 16.0f;
+		float maxZoom = 64.0f;
 		if (instance->imagePlaneZoom > maxZoom) {
 			instance->imagePlaneZoom = maxZoom;
 		}
