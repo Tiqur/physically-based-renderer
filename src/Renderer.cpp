@@ -379,8 +379,12 @@ void Renderer::renderShapes(const std::vector<Shape*>& shapes) {
 
 void Renderer::clampImagePlanePan() {
 	// Restrict image pan to within ImagePlane
-	imagePlanePan.x = glm::clamp(imagePlanePan.x, -1.0f, 1.0f);
-	imagePlanePan.y = glm::clamp(imagePlanePan.y, -1.0f, 1.0f);
+	float maxPan = imagePlaneZoom - 1.0f;
+	if (maxPan < 0.0f) {
+		maxPan = 0.0f;
+	}
+	imagePlanePan.x = glm::clamp(imagePlanePan.x, -maxPan, maxPan);
+	imagePlanePan.y = glm::clamp(imagePlanePan.y, -maxPan, maxPan);
 }
 
 void Renderer::renderImagePlane() {
@@ -417,8 +421,8 @@ void Renderer::renderImagePlane() {
 	} else {
 		glm::mat4 model = glm::mat4(1.0f);
 
-		model = glm::scale(model, glm::vec3(imagePlaneZoom, imagePlaneZoom, 1.0f));
 		model = glm::translate(model, glm::vec3(imagePlanePan.x, imagePlanePan.y, 0.0f));
+		model = glm::scale(model, glm::vec3(imagePlaneZoom, imagePlaneZoom, 1.0f));
 
 		glm::mat4 orthoProjection = glm::ortho(-1.0f, 1.0f, -1.0f, 1.0f, -1.0f, 1.0f);
 		glm::mat4 hudView = glm::mat4(1.0f);
@@ -608,15 +612,18 @@ void Renderer::scrollCallback(GLFWwindow* window, double xoffset, double yoffset
 		// Convert mouse pos to NDC
 		float ndcX = (2.0f * mouseX / instance->screenWidth) - 1.0f;
 		float ndcY = 1.0f - (2.0f * mouseY / instance->screenHeight);
+		glm::vec2 cursorNdc(ndcX, ndcY);
 
-		// Calculate point on ImagePlane that is under the cursor (for absolute panning and zoom)
-		glm::vec2 pointInImage = glm::vec2(ndcX, ndcY) / instance->imagePlaneZoom - instance->imagePlanePan;
+		float oldZoom = instance->imagePlaneZoom;
+		glm::vec2 oldPan = instance->imagePlanePan;
+
+		// Calculate which point on the unscaled image is under the cursor
+		glm::vec2 pointInImage = (cursorNdc - oldPan) / oldZoom;
 
 		// Zoom
 		float zoomFactor = 1.0f + (float)yoffset * 0.1f;
 		instance->imagePlaneZoom *= zoomFactor;
 
-		// TODO: Find a way to clamp these in one statement?
 		// Ensure can't zoom out beyond screen
 		const float minZoom = 1.0f;
 		if (instance->imagePlaneZoom < minZoom) {
@@ -628,9 +635,10 @@ void Renderer::scrollCallback(GLFWwindow* window, double xoffset, double yoffset
 		if (instance->imagePlaneZoom > maxZoom) {
 			instance->imagePlaneZoom = maxZoom;
 		}
+		float newZoom = instance->imagePlaneZoom;
 
-		// Calc new pan
-		instance->imagePlanePan = glm::vec2(ndcX, ndcY) / instance->imagePlaneZoom - pointInImage;
+		// Calc new pan to keep the same point under the cursor
+		instance->imagePlanePan = cursorNdc - pointInImage * newZoom;
 		instance->clampImagePlanePan();
 	}
 }
@@ -666,8 +674,9 @@ void Renderer::cursorPositionCallback(GLFWwindow* window, double xpos, double yp
 				if (instance->cam.getCamPitch() < -89.0f)
 					instance->cam.setCamPitch(-89.0f);
 			} else {
-				float ndcDeltaX = (2.0f * xoffset) / (instance->screenWidth * instance->imagePlaneZoom);
-				float ndcDeltaY = -(2.0f * yoffset) / (instance->screenHeight * instance->imagePlaneZoom);
+				// Pan amount is the mouse delta converted to NDC space.
+				float ndcDeltaX = (2.0f * xoffset) / instance->screenWidth;
+				float ndcDeltaY = -(2.0f * yoffset) / instance->screenHeight;
 
 				// Pan
 				instance->imagePlanePan.x += ndcDeltaX;

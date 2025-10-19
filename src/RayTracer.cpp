@@ -204,6 +204,7 @@ void RayTracer::traceAllAsync(const std::vector<Shape*>& worldObjects, Renderer&
 
 			// Bounces
 			for (int bounce = 0; bounce < maxBounces; bounce++) {
+				std::cout << "Bounce: " << bounce << std::endl;
 				for (int i = 0; i < N; i++) {
 					if (ray_steps(0, i) > 0) {
 						t_distance(i) = std::numeric_limits<float>::infinity();
