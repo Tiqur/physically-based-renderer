@@ -61,7 +61,7 @@ void setupScene() {
 	worldObjects.push_back(sphere);
 	sphere = new Sphere(1.0f, 4, glm::vec3(0.0f, 1.0f, -10.0f), Material::DIFFUSE);
 	worldObjects.push_back(sphere);
-	sphere = new Sphere(4.0f, 4, glm::vec3(0.0f, 2.0f, -15.0f), Material::DIFFUSE);
+	sphere = new Sphere(4.0f, 4, glm::vec3(0.0f, 3.0f, -15.0f), Material::DIFFUSE);
 	worldObjects.push_back(sphere);
 
 	// "Floor"

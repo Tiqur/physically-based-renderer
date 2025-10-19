@@ -65,7 +65,7 @@ void RayTracer::computeChunks() {
 
 void RayTracer::initializeRays(Renderer& r, int sampleIndex) {
 	ray_steps.setConstant(maxBounces);
-	ray_colors.setConstant(255);
+	ray_colors.setConstant(1.0f);
 	t_distance.setConstant(std::numeric_limits<float>::infinity()); // We use infinity so that ANY object hit will be closer
 
 	Camera& cam = r.getCamera();
@@ -170,7 +170,7 @@ Eigen::Matrix<int, 3, Eigen::Dynamic> RayTracer::getAveragedColors() const {
 	}
 
 	for (int pixelIdx = 0; pixelIdx < numPixels; pixelIdx++) {
-		Eigen::Vector3f avgColor = (*buffer_to_read).col(pixelIdx) / (float)samples;
+		Eigen::Vector3f avgColor = ((*buffer_to_read).col(pixelIdx) / (float)samples) * 255.0f;
 		averaged_colors.col(pixelIdx) = avgColor.cast<int>();
 	}
 
@@ -204,7 +204,6 @@ void RayTracer::traceAllAsync(const std::vector<Shape*>& worldObjects, Renderer&
 
 			// Bounces
 			for (int bounce = 0; bounce < maxBounces; bounce++) {
-				std::cout << "Bounce: " << bounce << std::endl;
 				for (int i = 0; i < N; i++) {
 					if (ray_steps(0, i) > 0) {
 						t_distance(i) = std::numeric_limits<float>::infinity();
@@ -226,9 +225,8 @@ void RayTracer::traceAllAsync(const std::vector<Shape*>& worldObjects, Renderer&
 
 						// Simple sky gradient
 						Eigen::Vector3f sky_color = (1.0f - t) * Eigen::Vector3f(1.0f, 1.0f, 1.0f) + t * Eigen::Vector3f(0.5f, 0.7f, 1.0f);
-						Eigen::Vector3f final_color = (ray_colors.col(i).cast<float>().array() / 255.0f * sky_color.array() * 255.0f).matrix();
 
-						ray_colors.col(i) = final_color.cast<int>();
+						ray_colors.col(i) = ray_colors.col(i).cwiseProduct(sky_color);
 						ray_steps(0, i) = 0;
 					}
 				}
@@ -346,14 +344,13 @@ void RayTracer::intersectSphere(const Sphere& sphere, int chunkIndex) {
 					ray_origins.col(i) = hit_point;
 					ray_directions.col(i) = unit_vec;
 
-					ray_colors.col(i) = (ray_colors.col(i).cast<float>() * 0.5f).cast<int>();
+					ray_colors.col(i) *= 0.5f;
 
 					ray_steps(0, i) = ray_steps(0, i) - 1;
 					break;
 				}
 				default: { // Normal
-					Eigen::Vector3f color = (N + Eigen::Vector3f::Ones()) * 0.5f * 255.0f;
-					ray_colors.col(i) = color.cast<int>();
+					ray_colors.col(i) = (N + Eigen::Vector3f::Ones()) * 0.5f;
 					ray_steps(0, i) = 0;
 					break;
 				}
