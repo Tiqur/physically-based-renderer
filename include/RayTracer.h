@@ -25,15 +25,20 @@ class RayTracer {
 	int targetSampleCount;
 	int currentSampleCount;
 	int maxBounces;
-	int NUM_THREADS = 64;
+	int NUM_THREADS{64};
 	std::atomic<bool> tracing{false}; // We want this to be atomic since it's being assigned within multiple threads
 
-	Eigen::Array<int, 1, Eigen::Dynamic> ray_steps;         // Lifecycle of each ray
-	Eigen::Matrix<int, 3, Eigen::Dynamic> ray_colors;       // Final color to be rendered on ImagePlane texture
-	Eigen::Matrix<float, 3, Eigen::Dynamic> ray_origins;    // Position of each ray
-	Eigen::Matrix<float, 3, Eigen::Dynamic> ray_directions; // Direction of each ray (normalized)
-	Eigen::Matrix<float, 1, Eigen::Dynamic> t_distance;     // Tracks closest hit (prevents rendering mistakes due to execution order)
-	Eigen::Matrix<float, 3, Eigen::Dynamic> accumulated_colors;
+	Eigen::Array<int, 1, Eigen::Dynamic> ray_steps;               // Lifecycle of each ray
+	Eigen::Matrix<int, 3, Eigen::Dynamic> ray_colors;             // Final color to be rendered on ImagePlane texture
+	Eigen::Matrix<float, 3, Eigen::Dynamic> ray_origins;          // Position of each ray
+	Eigen::Matrix<float, 3, Eigen::Dynamic> ray_directions;       // Direction of each ray (normalized)
+	Eigen::Matrix<float, 1, Eigen::Dynamic> t_distance;           // Tracks closest hit (prevents rendering mistakes due to execution order)
+	Eigen::Matrix<float, 3, Eigen::Dynamic> accumulated_buffer_a; // Double buffered
+	Eigen::Matrix<float, 3, Eigen::Dynamic> accumulated_buffer_b;
+
+	// We need this since we are dealing with multiple threads + rendering
+	std::atomic<const Eigen::Matrix<float, 3, Eigen::Dynamic>*> display_buffer;
+	std::atomic<int> display_sample_count{0};
 
 	// For random sampling
 	std::mt19937 rng;

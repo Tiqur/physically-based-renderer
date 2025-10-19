@@ -13,8 +13,13 @@ RayTracer::RayTracer(int numPixels, int maxBounces, int sampleCount)
 	ray_colors.resize(3, N);
 	ray_steps.resize(1, N);
 	t_distance.resize(1, N);
-	accumulated_colors.resize(3, numPixels);
-	accumulated_colors.setZero();
+
+	accumulated_buffer_a.resize(3, numPixels);
+	accumulated_buffer_b.resize(3, numPixels);
+	accumulated_buffer_a.setZero();
+	accumulated_buffer_b.setZero();
+
+	display_buffer = &accumulated_buffer_b;
 
 	computeChunks();
 }
@@ -28,8 +33,15 @@ void RayTracer::resize(int newNumPixels) {
 	ray_colors.resize(3, N);
 	ray_steps.resize(1, N);
 	t_distance.resize(1, N);
-	accumulated_colors.resize(3, numPixels);
-	accumulated_colors.setZero();
+
+	accumulated_buffer_a.resize(3, numPixels);
+	accumulated_buffer_b.resize(3, numPixels);
+	accumulated_buffer_a.setZero();
+	accumulated_buffer_b.setZero();
+
+	display_buffer.store(&accumulated_buffer_b);
+	display_sample_count.store(0);
+	currentSampleCount = 0;
 
 	computeChunks();
 }
@@ -149,13 +161,16 @@ void RayTracer::initializeRays(Renderer& r, int sampleIndex) {
 Eigen::Matrix<int, 3, Eigen::Dynamic> RayTracer::getAveragedColors() const {
 	Eigen::Matrix<int, 3, Eigen::Dynamic> averaged_colors(3, numPixels);
 
-	if (currentSampleCount == 0) {
+	int samples = display_sample_count.load();
+	const Eigen::Matrix<float, 3, Eigen::Dynamic>* buffer_to_read = display_buffer.load();
+
+	if (samples == 0 || buffer_to_read == nullptr) {
 		averaged_colors.setZero();
 		return averaged_colors;
 	}
 
 	for (int pixelIdx = 0; pixelIdx < numPixels; pixelIdx++) {
-		Eigen::Vector3f avgColor = accumulated_colors.col(pixelIdx) / (float)currentSampleCount;
+		Eigen::Vector3f avgColor = (*buffer_to_read).col(pixelIdx) / (float)samples;
 		averaged_colors.col(pixelIdx) = avgColor.cast<int>();
 	}
 
@@ -171,8 +186,17 @@ void RayTracer::traceAllAsync(const std::vector<Shape*>& worldObjects, Renderer&
 
 	// Start in own separate thread so we can see it real-time
 	std::thread([this, &worldObjects, &renderer]() {
-		accumulated_colors.setZero();
+		// Reset buffer states
+		accumulated_buffer_a.setZero();
+		accumulated_buffer_b.setZero();
 		currentSampleCount = 0;
+
+		Eigen::Matrix<float, 3, Eigen::Dynamic>* current_write_ptr = &accumulated_buffer_a;
+		const Eigen::Matrix<float, 3, Eigen::Dynamic>* current_read_ptr = &accumulated_buffer_b;
+
+		// Init
+		display_buffer.store(current_read_ptr);
+		display_sample_count.store(0);
 
 		// Sequential anti aliasing
 		for (int sample = 0; sample < targetSampleCount; sample++) {
@@ -215,10 +239,16 @@ void RayTracer::traceAllAsync(const std::vector<Shape*>& worldObjects, Renderer&
 
 			// Accumulate sample
 			for (int i = 0; i < numPixels; ++i) {
-				accumulated_colors.col(i) += ray_colors.col(i).cast<float>();
+				(*current_write_ptr).col(i) = (*current_read_ptr).col(i) + ray_colors.col(i).cast<float>();
 			}
-
 			currentSampleCount++;
+
+			display_buffer.store(current_write_ptr);
+			display_sample_count.store(currentSampleCount);
+
+			// Swap pointers for the next pass
+			std::swap(current_write_ptr, *const_cast<Eigen::Matrix<float, 3, Eigen::Dynamic>**>(&current_read_ptr));
+
 			std::cout << "Completed sample " << currentSampleCount << std::endl;
 		}
 
